@@ -7,9 +7,9 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(primary_key, auto_increment = false)]
+    /* #[sea_orm(primary_key, auto_increment = false)] */
     pub famille_id: i32,
-    #[sea_orm(primary_key, auto_increment = false)]
+    /* #[sea_orm(primary_key, auto_increment = false)] */
     pub animal_id: i32,
     pub statut_demande: StatutDemande,
     pub date_debut: Date,

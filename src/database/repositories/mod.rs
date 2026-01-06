@@ -1,0 +1,19 @@
+pub mod animal_repository;
+pub mod animal_tag_repository;
+pub mod association_repository;
+pub mod demande_repository;
+pub mod espece_repository;
+pub mod famille_repository;
+pub mod media_repository;
+pub mod tag_repository;
+pub mod utilisateur_repository;
+
+pub use animal_repository::AnimalRepository;
+pub use animal_tag_repository::AnimalTagRepository;
+pub use association_repository::AssociationRepository;
+pub use demande_repository::DemandeRepository;
+pub use espece_repository::EspeceRepository;
+pub use famille_repository::FamilleRepository;
+pub use media_repository::MediaRepository;
+pub use tag_repository::TagRepository;
+pub use utilisateur_repository::UtilisateurRepository;
