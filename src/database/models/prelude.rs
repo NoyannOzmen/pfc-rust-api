@@ -1,0 +1,9 @@
+pub use super::animal::Entity as Animal;
+pub use super::animal_tag::Entity as AnimalTag;
+pub use super::association::Entity as Association;
+pub use super::demande::Entity as Demande;
+pub use super::espece::Entity as Espece;
+pub use super::famille::Entity as Famille;
+pub use super::media::Entity as Media;
+pub use super::tag::Entity as Tag;
+pub use super::utilisateur::Entity as Utilisateur;

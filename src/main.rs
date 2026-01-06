@@ -1,5 +1,6 @@
 pub mod api;
 pub mod config;
+pub mod database;
 
 use actix_web::{App, HttpServer, middleware::Logger, web};
 use dotenv::dotenv;
