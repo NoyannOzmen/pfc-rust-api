@@ -2,11 +2,13 @@ use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnproces
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
+use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
 use crate::database::models::TagActiveModel;
 use crate::database::repositories::TagRepository;
+use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
@@ -22,15 +24,35 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct TagCreate {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Name must be between 3 and 50 characters"
+    ))]
     pub nom: String,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe this tag using between 3 and 50 characters"
+    ))]
     pub description: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct TagUpdate {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Name must be between 3 and 50 characters"
+    ))]
     pub nom: Option<String>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe this tag using between 3 and 50 characters"
+    ))]
     pub description: Option<String>,
 }
 
@@ -64,6 +86,7 @@ pub async fn create_tag(
     db: web::Data<DbConn>,
     json_tag: web::Json<TagCreate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_tag)?;
 
     info!(
         "Attempting to create tag with name: {}",

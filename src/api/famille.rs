@@ -2,11 +2,13 @@ use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnproces
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
+use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
 use crate::database::models::FamilleActiveModel;
 use crate::database::repositories::FamilleRepository;
+use crate::validators::common_validators::{process_json_validation, validate_phone, validate_zipcode};
 
 use sea_orm::ActiveValue::Set;
 
@@ -22,30 +24,104 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct FosterCreate {
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your first name must usually be between 2 and 50 characters"
+    ))]
     pub prenom: Option<String>,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your full last name should be between 2 and 50 characters"
+    ))]
     pub nom: String,
+    #[validate(custom(function = validate_phone))]
     pub telephone: String,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your address must usually be between 2 and 50 characters"
+    ))]
     pub rue: String,
+    #[validate(length(
+        min = 2,
+        max = 58,
+        message = "Your city's name must be between 2 and 58 characters"
+    ))]
     pub commune: String,
+    #[validate(custom(function = validate_zipcode))]
     pub code_postal: String,
+    #[validate(length(
+        min = 4,
+        max = 42,
+        message = "Country name must be between 4 and 42 characters"
+    ))]
     pub pays: String,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe your home using between 3 and 50 characters"
+    ))]
     pub hebergement: String,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe your garden/yard using between 3 and 50 characters"
+    ))]
     pub terrain: Option<String>,
     pub utilisateur_id: i32,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct FosterUpdate {
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your first name must usually be between 2 and 50 characters"
+    ))]
     pub prenom: Option<Option<String>>,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your full last name should be between 2 and 50 characters"
+    ))]
     pub nom: Option<String>,
+    #[validate(custom(function = validate_phone))]
     pub telephone: Option<String>,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your address must usually be between 2 and 50 characters"
+    ))]
     pub rue: Option<String>,
+     #[validate(length(
+        min = 2,
+        max = 58,
+        message = "Your city's name must be between 2 and 58 characters"
+    ))]
     pub commune: Option<String>,
+    #[validate(custom(function = validate_zipcode))]
     pub code_postal: Option<String>,
+    #[validate(length(
+        min = 4,
+        max = 42,
+        message = "Country name must be between 4 and 42 characters"
+    ))]
     pub pays: Option<String>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe your home using between 3 and 50 characters"
+    ))]
     pub hebergement: Option<String>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe your garden/yard using between 3 and 50 characters"
+    ))]
     pub terrain: Option<Option<String>>,
     pub utilisateur_id: Option<i32>,
 }
@@ -80,6 +156,7 @@ pub async fn create_foster(
     db: web::Data<DbConn>,
     json_foster: web::Json<FosterCreate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_foster)?;
 
     info!(
         "Attempting to create Foster with name: {}",
@@ -118,6 +195,7 @@ pub async fn update_foster(
     path: web::Path<i32>,
     json_foster: web::Json<FosterUpdate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_foster)?;
 
     let foster_id = path.into_inner();
 

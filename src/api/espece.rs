@@ -2,11 +2,13 @@ use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnproces
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
+use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
 use crate::database::models::EspeceActiveModel;
 use crate::database::repositories::EspeceRepository;
+use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
@@ -22,13 +24,23 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct SpeciesCreate {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Name must be between 3 and 50 characters"
+    ))]
     pub nom: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct SpeciesUpdate {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Name must be between 3 and 50 characters"
+    ))]
     pub nom: Option<String>,
 }
 
@@ -62,6 +74,7 @@ pub async fn create_species(
     db: web::Data<DbConn>,
     json_species: web::Json<SpeciesCreate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_species)?;
 
     info!(
         "Attempting to create species with name: {}",
@@ -91,6 +104,7 @@ pub async fn update_species(
     path: web::Path<i32>,
     json_species: web::Json<SpeciesUpdate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_species)?;
 
     let species_id = path.into_inner();
 

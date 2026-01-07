@@ -2,11 +2,12 @@ use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessab
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
-
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 use crate::database::models::UtilisateurActiveModel;
 use crate::database::repositories::UtilisateurRepository;
+use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
@@ -22,15 +23,27 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct UserCreate {
+    #[validate(length(
+        min = 8,
+        max = 30,
+        message = "Password must be between 8 and 30 characters"
+    ))]
     pub mot_de_passe: String,
+    #[validate(email(message = "Invalid email format"))]
     pub email: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct UserUpdate {
+    #[validate(length(
+        min = 8,
+        max = 30,
+        message = "Password must be between 8 and 30 characters"
+    ))]
     pub mot_de_passe: Option<String>,
+    #[validate(email(message = "Invalid email format"))]
     pub email: Option<String>,
 }
 
@@ -64,6 +77,7 @@ pub async fn create_user(
     db: web::Data<DbConn>,
     json_user: web::Json<UserCreate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_user)?;
 
     info!(
         "Attempting to create user with email: {}",
@@ -104,6 +118,7 @@ pub async fn update_user(
     path: web::Path<i32>,
     json_user: web::Json<UserUpdate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_user)?;
 
     let user_id = path.into_inner();
 

@@ -2,12 +2,14 @@ use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnproces
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
+use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
 use crate::database::models::AnimalActiveModel;
 use crate::database::models::sea_orm_active_enums::{Sexe, Statut};
 use crate::database::repositories::AnimalRepository;
+use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
@@ -23,13 +25,38 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct AnimalCreate {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Name must be between 3 and 50 characters"
+    ))]
     pub nom: String,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "This must be between 3 and 50 characters"
+    ))]
     pub race: Option<String>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Colour name must be between 3 and 50 characters"
+    ))]
     pub couleur: String,
+    #[validate(range(
+        min = 1,
+        max = 100,
+        message = "Age must be realistic"
+    ))]
     pub age: i32,
     pub sexe : Sexe,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe this animal using between 3 and 50 characters"
+    ))]
     pub description: String,
     pub statut: Statut,
     pub association_id: i32,
@@ -38,13 +65,38 @@ pub struct AnimalCreate {
     pub animal_tags: Option<Vec<i32>>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct AnimalUpdate {
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Name must be between 3 and 50 characters"
+    ))]
     pub nom: Option<String>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "This must be between 3 and 50 characters"
+    ))]
     pub race: Option<Option<String>>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Colour name must be between 3 and 50 characters"
+    ))]
     pub couleur: Option<String>,
+    #[validate(range(
+        min = 1,
+        max = 100,
+        message = "Age must be realistic"
+    ))]
     pub age: Option<i32>,
     pub sexe : Option<Sexe>,
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Please describe this animal using between 3 and 50 characters"
+    ))]
     pub description: Option<String>,
     pub statut: Option<Statut>,
     pub association_id: Option<i32>,
@@ -83,6 +135,7 @@ pub async fn create_animal(
     db: web::Data<DbConn>,
     json_animal: web::Json<AnimalCreate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_animal)?;
 
     info!(
         "Attempting to create animal with name: {}",
@@ -121,6 +174,7 @@ pub async fn update_animal(
     path: web::Path<i32>,
     json_animal: web::Json<AnimalUpdate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_animal)?;
 
     let animal_id = path.into_inner();
 

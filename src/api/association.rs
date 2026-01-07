@@ -2,11 +2,13 @@ use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnproces
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
+use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
 use crate::database::models::AssociationActiveModel;
 use crate::database::repositories::AssociationRepository;
+use crate::validators::common_validators::{process_json_validation, validate_phone, validate_siret, validate_zipcode};
 
 use sea_orm::ActiveValue::Set;
 
@@ -22,32 +24,100 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct AssociationCreate {
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your shelter's name must usually be between 2 and 50 characters"
+    ))]
     pub nom: String,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Their full name must usually be between 2 and 50 characters"
+    ))]
     pub responsable: String,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your address must usually be between 2 and 50 characters"
+    ))]
     pub rue: String,
+     #[validate(length(
+        min = 2,
+        max = 58,
+        message = "Your city's name must be between 2 and 58 characters"
+    ))]
     pub commune: String,
+    #[validate(custom(function = validate_zipcode))]
     pub code_postal: String,
+    #[validate(length(
+        min = 4,
+        max = 42,
+        message = "Country name must be between 4 and 42 characters"
+    ))]
     pub pays: String,
+    #[validate(custom(function = validate_siret))]
     pub siret: String,
+    #[validate(custom(function = validate_phone))]
     pub telephone: String,
+    #[validate(url)]
     pub site: Option<String>,
+    #[validate(length(
+        min = 3,
+        max = 200,
+        message = "Please describe your shelter using between 3 and 200 characters"
+    ))]
     pub description: Option<String>,
     pub utilisateur_id: i32,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Validate)]
 pub struct AssociationUpdate {
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your shelter's name must usually be between 2 and 50 characters"
+    ))]
     pub nom: Option<String>,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Their full name must usually be between 2 and 50 characters"
+    ))]
     pub responsable: Option<String>,
+    #[validate(length(
+        min = 2,
+        max = 50,
+        message = "Your address must usually be between 2 and 50 characters"
+    ))]
     pub rue: Option<String>,
+    #[validate(length(
+        min = 2,
+        max = 58,
+        message = "Your city's name must be between 2 and 58 characters"
+    ))]
     pub commune: Option<String>,
+    #[validate(custom(function = validate_zipcode))]
     pub code_postal: Option<String>,
+    #[validate(length(
+        min = 4,
+        max = 42,
+        message = "Country name must be between 4 and 42 characters"
+    ))]
     pub pays: Option<String>,
+    #[validate(custom(function = validate_siret))]
     pub siret: Option<String>,
+    #[validate(custom(function = validate_phone))]
     pub telephone: Option<String>,
+    #[validate(url)]
     pub site: Option<Option<String>>,
+    #[validate(length(
+        min = 3,
+        max = 200,
+        message = "Please describe your shelter using between 3 and 200 characters"
+    ))]
     pub description: Option<Option<String>>,
     pub utilisateur_id: Option<i32>,
 }
@@ -82,6 +152,7 @@ pub async fn create_shelter(
     db: web::Data<DbConn>,
     json_shelter: web::Json<AssociationCreate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_shelter)?;
 
     info!(
         "Attempting to create shelter with name: {}",
@@ -121,6 +192,7 @@ pub async fn update_shelter(
     path: web::Path<i32>,
     json_shelter: web::Json<AssociationUpdate>,
 ) -> Result<HttpResponse, Error> {
+    process_json_validation(&json_shelter)?;
 
     let shelter_id = path.into_inner();
 
