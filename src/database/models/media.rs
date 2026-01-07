@@ -8,7 +8,7 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(column_type = "Text")]
     pub url: String,
-    pub ordre: Option<i32>,
+    pub ordre: i32,
     pub animal_id: Option<i32>,
     pub association_id: Option<i32>,
     #[sea_orm(

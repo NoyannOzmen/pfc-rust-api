@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, serde::Serialize, serde::Deserialize)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "sexe")]
 pub enum Sexe {
     #[sea_orm(string_value = "Mâle")]
@@ -10,7 +10,7 @@ pub enum Sexe {
     #[sea_orm(string_value = "Inconnu")]
     Inconnu,
 }
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, serde::Serialize, serde::Deserialize)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "statut")]
 pub enum Statut {
     #[sea_orm(string_value = "En refuge")]
@@ -20,7 +20,7 @@ pub enum Statut {
     #[sea_orm(string_value = "Adopté")]
     Adopté,
 }
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, serde::Serialize, serde::Deserialize)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "statut_demande")]
 pub enum StatutDemande {
     #[sea_orm(string_value = "En attente")]

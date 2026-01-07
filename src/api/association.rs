@@ -1,0 +1,216 @@
+use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+use actix_web::{Error, HttpResponse, web};
+use log::{info, warn};
+use sea_orm::DbConn;
+
+use serde::{Deserialize, Serialize};
+
+use crate::database::models::AssociationActiveModel;
+use crate::database::repositories::AssociationRepository;
+
+use sea_orm::ActiveValue::Set;
+
+pub fn configure_public(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
+            .get(get_shelters)
+            .post(create_shelter)
+        )
+        .service(web::resource("/{id}")
+            .get(get_shelter)
+            .put(update_shelter)
+            .delete(delete_shelter)
+        );
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct AssociationCreate {
+    pub nom: String,
+    pub responsable: String,
+    pub rue: String,
+    pub commune: String,
+    pub code_postal: String,
+    pub pays: String,
+    pub siret: String,
+    pub telephone: String,
+    pub site: Option<String>,
+    pub description: Option<String>,
+    pub utilisateur_id: i32,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct AssociationUpdate {
+    pub nom: Option<String>,
+    pub responsable: Option<String>,
+    pub rue: Option<String>,
+    pub commune: Option<String>,
+    pub code_postal: Option<String>,
+    pub pays: Option<String>,
+    pub siret: Option<String>,
+    pub telephone: Option<String>,
+    pub site: Option<Option<String>>,
+    pub description: Option<Option<String>>,
+    pub utilisateur_id: Option<i32>,
+}
+
+pub async fn get_shelters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
+    let repo = AssociationRepository::new(db.get_ref());
+
+    let shelters = repo
+        .find_all()
+        .await
+        .map_err(|e| ErrorNotFound(format!("Failed to retrieve shelters: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(shelters))
+}
+
+pub async fn get_shelter(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+    let shelter_id = path.into_inner();
+    let repo = AssociationRepository::new(db.get_ref());
+
+    let shelter = repo
+        .find_by_id(shelter_id)
+        .await
+        .map_err(|e| ErrorNotFound(format!("Failed to retrieve shelter: {}", e)))?;
+
+    match shelter {
+        Some(shelter) => Ok(HttpResponse::Ok().json(shelter)),
+        None => Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id))),
+    }
+}
+
+pub async fn create_shelter(
+    db: web::Data<DbConn>,
+    json_shelter: web::Json<AssociationCreate>,
+) -> Result<HttpResponse, Error> {
+
+    info!(
+        "Attempting to create shelter with name: {}",
+        json_shelter.nom
+    );
+
+    let repo = AssociationRepository::new(db.get_ref());
+
+    let shelter = json_shelter.into_inner();
+
+    let shelter_model = AssociationActiveModel {
+        nom: Set(shelter.nom),
+        responsable: Set(shelter.responsable),
+        rue: Set(shelter.rue),
+        commune: Set(shelter.commune),
+        code_postal: Set(shelter.code_postal),
+        pays: Set(shelter.pays),
+        siret: Set(shelter.siret),
+        telephone: Set(shelter.telephone),
+        site: Set(shelter.site),
+        description: Set(shelter.description),
+        utilisateur_id: Set(shelter.utilisateur_id),
+        ..Default::default()
+    };
+
+    let created_shelter = repo
+        .create(shelter_model)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Failed to create shelter: {}", e)))?;
+
+    info!("Shelter created with ID: {}", created_shelter.id);
+    Ok(HttpResponse::Created().json(created_shelter))
+}
+
+pub async fn update_shelter(
+    db: web::Data<DbConn>,
+    path: web::Path<i32>,
+    json_shelter: web::Json<AssociationUpdate>,
+) -> Result<HttpResponse, Error> {
+
+    let shelter_id = path.into_inner();
+
+    info!("Attempting to update shelter with ID: {}", shelter_id);
+
+    let repo = AssociationRepository::new(db.get_ref());
+
+    let shelter_data = repo
+        .find_by_id(shelter_id)
+        .await
+        .map_err(|e| ErrorInternalServerError(e))?;
+
+    match shelter_data {
+        Some(shelter_data) => {
+            let mut shelter_active_model: AssociationActiveModel = shelter_data.into();
+
+            let shelter = json_shelter.into_inner();
+
+            if let Some(nom) = shelter.nom {
+                shelter_active_model.nom = Set(nom);
+            }
+            if let Some(responsable) = shelter.responsable {
+                shelter_active_model.responsable = Set(responsable);
+            }
+            if let Some(rue) = shelter.rue {
+                shelter_active_model.rue= Set(rue);
+            }
+            if let Some(commune) = shelter.commune {
+                shelter_active_model.commune = Set(commune);
+            }
+            if let Some(code_postal) = shelter.code_postal {
+                shelter_active_model.code_postal = Set(code_postal);
+            }
+            if let Some(pays) = shelter.pays {
+                shelter_active_model.pays = Set(pays);
+            }
+            if let Some(siret) = shelter.siret {
+                shelter_active_model.siret = Set(siret);
+            }
+            if let Some(telephone) = shelter.telephone {
+                shelter_active_model.telephone = Set(telephone);
+            }
+            if let Some(site) = shelter.site {
+                shelter_active_model.site = Set(site);
+            }
+            if let Some(description) = shelter.description {
+                shelter_active_model.description = Set(description);
+            }
+
+            let updated_shelter = repo
+                .update(shelter_active_model)
+                .await
+                .map_err(|e| ErrorInternalServerError(format!("Failed to update shelter: {}", e)))?;
+
+            info!("Shelter with ID {} updated", shelter_id);
+            Ok(HttpResponse::Ok().json(updated_shelter))
+        }
+        None => Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id))),
+    }
+}
+
+pub async fn delete_shelter(
+    db: web::Data<DbConn>,
+    path: web::Path<i32>,
+) -> Result<HttpResponse, Error> {
+    let shelter_id = path.into_inner();
+    let repo = AssociationRepository::new(db.get_ref());
+
+    info!("Attempting to delete shelter with ID: {}", shelter_id);
+
+    let shelter = repo
+        .find_by_id(shelter_id)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+    if shelter.is_none() {
+        return Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id)));
+    }
+
+    let delete_result = repo
+        .delete(shelter_id)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Failed to delete shelter: {}", e)))?;
+
+    if delete_result.rows_affected > 0 {
+        info!("Shelter with ID {} successfully deleted", shelter_id);
+        Ok(HttpResponse::NoContent().finish())
+    } else {
+        warn!("Shelter with ID {} was not deleted (0 rows affected)", shelter_id);
+        Err(ErrorInternalServerError(
+            "Failed to delete shelter (0 rows affected)",
+        ))
+    }
+}
