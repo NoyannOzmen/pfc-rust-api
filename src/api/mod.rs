@@ -29,7 +29,7 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
         .service(web::scope("/associations").configure(|c| association::configure_public(c)))
         .service(web::scope("/demandes").configure(|c| demande::configure_public(c)))
         .service(web::scope("/especes").configure(|c| espece::configure_public(c)))
-        .service(web::scope("/familles").configure(|c| famille::configure_public(c)))
+        .service(web::scope("/famille").configure(|c| famille::configure_public(c)))
         .service(web::scope("/media").configure(|c| media::configure_public(c)))
         .service(web::scope("/tags").configure(|c| tag::configure_public(c)))
         .service(web::scope("/users").configure(|c| utilisateur::configure(c)))

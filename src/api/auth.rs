@@ -6,6 +6,7 @@ use validator::Validate;
 
 use crate::auth::jwt::{/* Claims, User, */ generate_claims, generate_token_from_claims, /* decode_jwt */};
 use crate::auth::password::verify_password;
+use crate::database::models::UtilisateurModel;
 /* use crate::database::models::UtilisateurModel; */
 use crate::database::repositories::UtilisateurRepository;
 
@@ -20,7 +21,8 @@ pub struct LoginRequest {
 
 #[derive(Serialize)]
 pub struct LoginResponse {
-    pub token: String,
+    pub access_token: String,
+    pub user: UtilisateurModel
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
@@ -47,9 +49,10 @@ async fn login(db: web::Data<DbConn>, req: web::Json<LoginRequest>) -> Result<Ht
     }
 
     let claims = generate_claims(&user);
-    let token = generate_token_from_claims(&claims)?;
+    let access_token = generate_token_from_claims(&claims)?;
 
     Ok(HttpResponse::Ok().json(LoginResponse {
-        token,
+        access_token,
+        user
     }))
 }

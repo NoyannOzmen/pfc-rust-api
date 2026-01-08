@@ -4,7 +4,7 @@ use regex::Regex;
 use validator::{Validate, ValidationError, ValidationErrors};
 
 pub static PHONE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(0|\+33 )[1-9]([\-. ]?[0-9]{2} ){3}([\-. ]?[0-9]{2})|([0-9]{8})$").unwrap());
-pub static ZIPCODE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(0|\+33 )[1-9]([\-. ]?[0-9]{2} ){3}([\-. ]?[0-9]{2})|([0-9]{8})$").unwrap());
+pub static ZIPCODE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(?:0[1-9]|[1-8]\d|9[0-8])\d{3}$").unwrap());
 pub static SIRET_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{14}|((\d{3}[ ]\d{3}[ ]\d{3})|\d{9})[ ]\d{5})$").unwrap());
 
 pub fn validate_phone(phone: &str) -> Result<(), ValidationError> {

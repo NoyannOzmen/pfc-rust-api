@@ -1,4 +1,4 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity};
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
@@ -6,8 +6,9 @@ use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::models::AssociationActiveModel;
-use crate::database::repositories::AssociationRepository;
+use crate::auth::hash_password;
+use crate::database::models::{AssociationActiveModel, UtilisateurActiveModel};
+use crate::database::repositories::{AssociationRepository, UtilisateurRepository};
 use crate::validators::common_validators::{process_json_validation, validate_phone, validate_siret, validate_zipcode};
 
 use sea_orm::ActiveValue::Set;
@@ -15,6 +16,8 @@ use sea_orm::ActiveValue::Set;
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_shelters)
+        )
+        .service(web::resource("/register")
             .post(create_shelter)
         )
         .service(web::resource("/{id}")
@@ -70,7 +73,20 @@ pub struct AssociationCreate {
         message = "Please describe your shelter using between 3 and 200 characters"
     ))]
     pub description: Option<String>,
-    pub utilisateur_id: i32,
+    pub utilisateur_id: Option<i32>,
+    #[validate(length(
+        min = 8,
+        max = 30,
+        message = "Password must be between 8 and 30 characters"
+    ))]
+    pub mot_de_passe: String,
+    #[validate(must_match(
+        other = "mot_de_passe",
+        message = "Please ensure that your password is correctly entered in both fields"
+    ))]
+    pub confirmation: String,
+    #[validate(email(message = "Invalid email format"))]
+    pub email: String,
 }
 
 #[derive(Deserialize, Serialize, Validate)]
@@ -159,9 +175,36 @@ pub async fn create_shelter(
         json_shelter.nom
     );
 
-    let repo = AssociationRepository::new(db.get_ref());
+    let user_repo = UtilisateurRepository::new(db.get_ref());
+
+    if let Some(_) = user_repo
+        .find_by_email(&json_shelter.email)
+        .await
+        .map_err(|e| ErrorInternalServerError(e))?
+    {
+        return Err(ErrorUnprocessableEntity(format!(
+            "Something went wrong creating user",
+        )));
+    }
+
+    let hashed_password = hash_password(&json_shelter.mot_de_passe)?;
 
     let shelter = json_shelter.into_inner();
+
+    let user_model = UtilisateurActiveModel {
+        email: Set(shelter.email),
+        mot_de_passe: Set(hashed_password),
+        ..Default::default()
+    };
+
+    let created_user = user_repo
+        .create(user_model)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Failed to create user: {}", e)))?;
+
+    info!("User created with ID: {}", created_user.id);
+
+    let repo = AssociationRepository::new(db.get_ref());
 
     let shelter_model = AssociationActiveModel {
         nom: Set(shelter.nom),
@@ -174,7 +217,7 @@ pub async fn create_shelter(
         telephone: Set(shelter.telephone),
         site: Set(shelter.site),
         description: Set(shelter.description),
-        utilisateur_id: Set(shelter.utilisateur_id),
+        utilisateur_id: Set(created_user.id),
         ..Default::default()
     };
 

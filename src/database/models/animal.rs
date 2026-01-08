@@ -23,7 +23,7 @@ pub struct Model {
     pub famille_id: Option<i32>,
     pub espece_id: i32,
     #[sea_orm(has_many)]
-    pub animal_tags: HasMany<super::animal_tag::Entity>,
+    pub tags: HasMany<super::animal_tag::Entity>,
     #[sea_orm(
         belongs_to,
         from = "association_id",
@@ -51,7 +51,7 @@ pub struct Model {
     )]
     pub famille: HasOne<super::famille::Entity>,
     #[sea_orm(has_many)]
-    pub media: HasMany<super::media::Entity>,
+    pub images_animal: HasMany<super::media::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

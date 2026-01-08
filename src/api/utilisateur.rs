@@ -30,12 +30,17 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 
 #[derive(Deserialize, Serialize, Validate)]
 pub struct UserCreate {
-    #[validate(length(
+   #[validate(length(
         min = 8,
         max = 30,
         message = "Password must be between 8 and 30 characters"
     ))]
     pub mot_de_passe: String,
+    #[validate(must_match(
+        other = "mot_de_passe",
+        message = "Please ensure that your password is correctly entered in both fields"
+    ))]
+    pub confirmation: String,
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
 }
