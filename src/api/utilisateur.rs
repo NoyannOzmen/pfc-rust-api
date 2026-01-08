@@ -5,6 +5,7 @@ use sea_orm::DbConn;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+use crate::auth::hash_password;
 use crate::database::models::UtilisateurActiveModel;
 use crate::database::repositories::UtilisateurRepository;
 use crate::validators::common_validators::{process_json_validation};
@@ -12,9 +13,13 @@ use crate::validators::common_validators::{process_json_validation};
 use sea_orm::ActiveValue::Set;
 
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("").post(create_user)
+        );
+}
+
+pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_users)
-            .post(create_user)
         )
         .service(web::resource("/{id}")
             .get(get_user)
@@ -96,11 +101,13 @@ pub async fn create_user(
         )));
     }
 
+    let hashed_password = hash_password(&json_user.mot_de_passe)?;
+
     let user = json_user.into_inner();
 
     let user_model = UtilisateurActiveModel {
         email: Set(user.email),
-        mot_de_passe: Set(user.mot_de_passe),
+        mot_de_passe: Set(hashed_password),
         ..Default::default()
     };
 
