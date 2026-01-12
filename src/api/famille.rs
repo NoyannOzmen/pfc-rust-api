@@ -1,4 +1,4 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity};
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
@@ -6,8 +6,9 @@ use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::models::FamilleActiveModel;
-use crate::database::repositories::FamilleRepository;
+use crate::auth::hash_password;
+use crate::database::models::{FamilleActiveModel, UtilisateurActiveModel};
+use crate::database::repositories::{FamilleRepository, UtilisateurRepository};
 use crate::validators::common_validators::{process_json_validation, validate_phone, validate_zipcode};
 
 use sea_orm::ActiveValue::Set;
@@ -15,6 +16,8 @@ use sea_orm::ActiveValue::Set;
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_fosters)
+        )
+        .service(web::resource("/register")
             .post(create_foster)
         )
         .service(web::resource("/{id}")
@@ -72,7 +75,20 @@ pub struct FosterCreate {
         message = "Please describe your garden/yard using between 3 and 50 characters"
     ))]
     pub terrain: Option<String>,
-    pub utilisateur_id: i32,
+    pub utilisateur_id: Option<i32>,
+    #[validate(length(
+        min = 8,
+        max = 30,
+        message = "Password must be between 8 and 30 characters"
+    ))]
+    pub mot_de_passe: String,
+    #[validate(must_match(
+        other = "mot_de_passe",
+        message = "Please ensure that your password is correctly entered in both fields"
+    ))]
+    pub confirmation: String,
+    #[validate(email(message = "Invalid email format"))]
+    pub email: String,
 }
 
 #[derive(Deserialize, Serialize, Validate)]
@@ -163,9 +179,36 @@ pub async fn create_foster(
         json_foster.nom
     );
 
-    let repo = FamilleRepository::new(db.get_ref());
+    let user_repo = UtilisateurRepository::new(db.get_ref());
+
+    if let Some(_) = user_repo
+        .find_by_email(&json_foster.email)
+        .await
+        .map_err(|e| ErrorInternalServerError(e))?
+    {
+        return Err(ErrorUnprocessableEntity(format!(
+            "Something went wrong creating user",
+        )));
+    }
+
+    let hashed_password = hash_password(&json_foster.mot_de_passe)?;
 
     let foster = json_foster.into_inner();
+
+    let user_model = UtilisateurActiveModel {
+        email: Set(foster.email),
+        mot_de_passe: Set(hashed_password),
+        ..Default::default()
+    };
+
+    let created_user = user_repo
+        .create(user_model)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Failed to create user: {}", e)))?;
+
+    info!("User created with ID: {}", created_user.id);
+
+    let repo = FamilleRepository::new(db.get_ref());
 
     let foster_model = FamilleActiveModel {
         prenom: Set(foster.prenom),
@@ -177,7 +220,7 @@ pub async fn create_foster(
         pays: Set(foster.pays),
         hebergement: Set(foster.hebergement),
         terrain: Set(foster.terrain),
-        utilisateur_id: Set(foster.utilisateur_id),
+        utilisateur_id: Set(created_user.id),
         ..Default::default()
     };
 
