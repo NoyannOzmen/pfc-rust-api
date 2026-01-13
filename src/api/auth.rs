@@ -1,13 +1,12 @@
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
-use actix_web::{Error, /* HttpRequest, */ HttpResponse, web};
+use actix_web::{Error, HttpResponse, web};
 use sea_orm::DbConn;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::auth::jwt::{/* Claims, User, */ generate_claims, generate_token_from_claims, /* decode_jwt */};
+use crate::auth::jwt::{generate_claims, generate_token_from_claims};
 use crate::auth::password::verify_password;
-use crate::database::models::UtilisateurModel;
-/* use crate::database::models::UtilisateurModel; */
+use crate::database::models::UtilisateurModelEx;
 use crate::database::repositories::UtilisateurRepository;
 
 use crate::validators::common_validators::process_json_validation;
@@ -22,7 +21,7 @@ pub struct LoginRequest {
 #[derive(Serialize)]
 pub struct LoginResponse {
     pub access_token: String,
-    pub user: UtilisateurModel
+    pub user: UtilisateurModelEx
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {

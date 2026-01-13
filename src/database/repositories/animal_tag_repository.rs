@@ -1,4 +1,4 @@
-use crate::database::models::{AnimalTagActiveModel, AnimalTagEntity, AnimalTagModel};
+/* use crate::database::models::{AnimalTagActiveModel, AnimalTagEntity, AnimalTagModel};
 use sea_orm::DeleteResult;
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait,
@@ -32,4 +32,4 @@ impl<'a> AnimalTagRepository<'a> {
     pub async fn delete(&self, id: i32) -> Result<DeleteResult, DbErr> {
         AnimalTagEntity::delete_by_id(id).exec(self.db).await
     }
-}
+} */

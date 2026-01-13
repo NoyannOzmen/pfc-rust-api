@@ -37,7 +37,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "NoAction"
     )]
-    pub utilisateur: HasOne<super::utilisateur::Entity>,
+    pub identifiant_famille: HasOne<super::utilisateur::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

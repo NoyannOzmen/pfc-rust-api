@@ -22,8 +22,8 @@ pub struct Model {
     pub association_id: i32,
     pub famille_id: Option<i32>,
     pub espece_id: i32,
-    #[sea_orm(has_many)]
-    pub tags: HasMany<super::animal_tag::Entity>,
+    #[sea_orm(has_many, via = "animal_tag")]
+    pub tags: HasMany<super::tag::Entity>,
     #[sea_orm(
         belongs_to,
         from = "association_id",
@@ -31,7 +31,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "NoAction"
     )]
-    pub association: HasOne<super::association::Entity>,
+    pub refuge: HasOne<super::association::Entity>,
     #[sea_orm(has_many)]
     pub demandes: HasMany<super::demande::Entity>,
     #[sea_orm(
@@ -49,7 +49,7 @@ pub struct Model {
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    pub famille: HasOne<super::famille::Entity>,
+    pub accueillant: HasOne<super::famille::Entity>,
     #[sea_orm(has_many)]
     pub images_animal: HasMany<super::media::Entity>,
 }

@@ -42,6 +42,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(db.clone()))
+            .service(actix_files::Files::new("/images", "./static/images").show_files_listing())
             .configure(|config| api::configure_routes(config, db.clone()))
             .wrap(Logger::default())
     }).bind(format!(

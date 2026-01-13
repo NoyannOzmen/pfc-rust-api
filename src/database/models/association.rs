@@ -29,9 +29,9 @@ pub struct Model {
     #[sea_orm(unique)]
     pub utilisateur_id: i32,
     #[sea_orm(has_many)]
-    pub animals: HasMany<super::animal::Entity>,
+    pub pensionnaires: HasMany<super::animal::Entity>,
     #[sea_orm(has_many)]
-    pub media: HasMany<super::media::Entity>,
+    pub images_association: HasMany<super::media::Entity>,
     #[sea_orm(
         belongs_to,
         from = "utilisateur_id",
@@ -39,7 +39,7 @@ pub struct Model {
         on_update = "Cascade",
         on_delete = "NoAction"
     )]
-    pub utilisateur: HasOne<super::utilisateur::Entity>,
+    pub identifiant_association: HasOne<super::utilisateur::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

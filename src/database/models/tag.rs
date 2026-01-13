@@ -10,8 +10,6 @@ pub struct Model {
     pub nom: String,
     #[sea_orm(column_type = "Text")]
     pub description: String,
-    #[sea_orm(has_many)]
-    pub animal_tags: HasMany<super::animal_tag::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

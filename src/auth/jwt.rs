@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::database::models::UtilisateurModel;
+use crate::database::models::UtilisateurModelEx;
 
 #[derive(Deserialize, Serialize)]
 pub struct User {
@@ -31,7 +31,7 @@ pub fn generate_uuid() -> String {
     Uuid::new_v4().to_string()
 }
 
-pub fn generate_claims(user: &UtilisateurModel) -> Claims {
+pub fn generate_claims(user: &UtilisateurModelEx) -> Claims {
     let expiration = Utc::now()
         .checked_add_signed(Duration::minutes(1))
         .expect("valid timestamp")

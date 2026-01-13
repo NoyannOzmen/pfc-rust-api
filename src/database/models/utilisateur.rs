@@ -11,9 +11,9 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub mot_de_passe: String,
     #[sea_orm(has_one)]
-    pub association: HasOne<super::association::Entity>,
+    pub refuge: HasOne<super::association::Entity>,
     #[sea_orm(has_one)]
-    pub famille: HasOne<super::famille::Entity>,
+    pub accueillant: HasOne<super::famille::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

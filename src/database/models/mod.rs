@@ -15,7 +15,9 @@ pub use animal:: {
  ActiveModel as AnimalActiveModel,
  Column as AnimalColumn,
  Entity as AnimalEntity,
- Model as AnimalModel,  
+ Model as AnimalModel,
+ ModelEx as AnimalModelEx,
+ ActiveModelEx as AnimalActiveModelEx,
 };
 
 pub use animal_tag:: {
@@ -23,6 +25,7 @@ pub use animal_tag:: {
  Column as AnimalTagColumn,
  Entity as AnimalTagEntity,
  Model as AnimalTagModel, 
+ ModelEx as AnimalTagModelEx, 
 };
 
 pub use association:: {
@@ -30,6 +33,8 @@ pub use association:: {
  Column as AssociationColumn,
  Entity as AssociationEntity,
  Model as AssociationModel, 
+ ModelEx as AssociationModelEx,
+ ActiveModelEx as AssociationActiveModelEx,
 };
 
 pub use demande:: {
@@ -37,6 +42,7 @@ pub use demande:: {
  Column as DemandeColumn,
  Entity as DemandeEntity,
  Model as DemandeModel, 
+ ModelEx as DemandeModelEx, 
 };
 
 pub use espece:: {
@@ -44,6 +50,7 @@ pub use espece:: {
  Column as EspeceColumn,
  Entity as EspeceEntity,
  Model as EspeceModel, 
+ ModelEx as EspeceModelEx,
 };
 
 pub use famille:: {
@@ -51,6 +58,7 @@ pub use famille:: {
  Column as FamilleColumn,
  Entity as FamilleEntity,
  Model as FamilleModel, 
+ ModelEx as FamilleModelEx,
 };
 
 pub use media:: {
@@ -58,13 +66,15 @@ pub use media:: {
  Column as MediaColumn,
  Entity as MediaEntity,
  Model as MediaModel, 
+ ModelEx as MediaModelEx,
 };
 
 pub use tag:: {
  ActiveModel as TagActiveModel,
  Column as TagColumn,
  Entity as TagEntity,
- Model as TagModel, 
+ Model as TagModel,
+ ModelEx as TagModelEx, 
 };
 
 pub use utilisateur:: {
@@ -72,4 +82,6 @@ pub use utilisateur:: {
  Column as UtilisateurColumn,
  Entity as UtilisateurEntity,
  Model as UtilisateurModel, 
+ ModelEx as UtilisateurModelEx,
+ ActiveModelEx as UtilisateurActiveModelEx,
 };

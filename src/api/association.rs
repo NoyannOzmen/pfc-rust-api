@@ -7,7 +7,7 @@ use validator::Validate;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::hash_password;
-use crate::database::models::{AssociationActiveModel, UtilisateurActiveModel};
+use crate::database::models::{AssociationActiveModel, AssociationActiveModelEx, UtilisateurActiveModel};
 use crate::database::repositories::{AssociationRepository, UtilisateurRepository};
 use crate::validators::common_validators::{process_json_validation, validate_phone, validate_siret, validate_zipcode};
 
@@ -157,7 +157,7 @@ pub async fn get_shelter(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<
         .find_by_id(shelter_id)
         .await
         .map_err(|e| ErrorNotFound(format!("Failed to retrieve shelter: {}", e)))?;
-
+    
     match shelter {
         Some(shelter) => Ok(HttpResponse::Ok().json(shelter)),
         None => Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id))),
@@ -250,7 +250,7 @@ pub async fn update_shelter(
 
     match shelter_data {
         Some(shelter_data) => {
-            let mut shelter_active_model: AssociationActiveModel = shelter_data.into();
+            let mut shelter_active_model: AssociationActiveModelEx = shelter_data.into();
 
             let shelter = json_shelter.into_inner();
 

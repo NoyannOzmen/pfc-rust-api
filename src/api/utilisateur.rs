@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::auth::hash_password;
-use crate::database::models::UtilisateurActiveModel;
+use crate::database::models::{UtilisateurActiveModel, UtilisateurActiveModelEx};
 use crate::database::repositories::UtilisateurRepository;
 use crate::validators::common_validators::{process_json_validation};
 
@@ -163,7 +163,7 @@ pub async fn update_user(
 
     match user_data {
         Some(user_data) => {
-            let mut user_active_model: UtilisateurActiveModel = user_data.into();
+            let mut user_active_model: UtilisateurActiveModelEx = user_data.into();
 
             let user = json_user.into_inner();
 

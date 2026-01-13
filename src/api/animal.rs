@@ -6,7 +6,7 @@ use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::models::AnimalActiveModel;
+use crate::database::models::{AnimalActiveModel, AnimalActiveModelEx};
 use crate::database::models::sea_orm_active_enums::{Sexe, Statut};
 use crate::database::repositories::AnimalRepository;
 use crate::validators::common_validators::{process_json_validation};
@@ -189,7 +189,7 @@ pub async fn update_animal(
 
     match animal_data {
         Some(animal_data) => {
-            let mut animal_active_model: AnimalActiveModel = animal_data.into();
+            let mut animal_active_model: AnimalActiveModelEx = animal_data.into();
 
             let animal = json_animal.into_inner();
 

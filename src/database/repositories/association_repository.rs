@@ -1,9 +1,8 @@
-use crate::database::models::{AssociationActiveModel, AssociationEntity, AssociationModel};
-use sea_orm::DeleteResult;
+use crate::database::models::{AnimalEntity, AssociationActiveModel, AssociationActiveModelEx, AssociationEntity, AssociationModel, AssociationModelEx, EspeceEntity, MediaEntity};
+use sea_orm::{DeleteResult, EntityLoaderTrait};
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait,
 };
-
 pub struct AssociationRepository<'a> {
     db: &'a DatabaseConnection,
 }
@@ -13,19 +12,34 @@ impl<'a> AssociationRepository<'a> {
         Self { db }
     }
 
-    pub async fn find_all(&self) -> Result<Vec<AssociationModel>, DbErr> {
-        AssociationEntity::find().all(self.db).await
+    pub async fn find_all(&self) -> Result<Vec<AssociationModelEx>, DbErr> {
+        let shelters = AssociationEntity::load()
+            .with(AnimalEntity)
+            .with(MediaEntity)
+            .all(self.db)
+            .await?;
+
+        Ok(shelters)
     }
 
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<AssociationModel>, DbErr> {
-        AssociationEntity::find_by_id(id).one(self.db).await
+    pub async fn find_by_id(&self, id: i32) -> Result<Option<AssociationModelEx>, DbErr> {
+        let shelter  = AssociationEntity::load()
+            .with((AnimalEntity, MediaEntity))
+            .with((AnimalEntity, EspeceEntity))
+            .with((AnimalEntity, AssociationEntity))
+            .with(MediaEntity)
+            .filter_by_id(id)
+            .one(self.db)
+            .await?;
+
+        Ok(shelter)
     }
 
     pub async fn create(&self, model: AssociationActiveModel) -> Result<AssociationModel, DbErr> {
         model.insert(self.db).await
     }
 
-    pub async fn update(&self, model: AssociationActiveModel) -> Result<AssociationModel, DbErr> {
+    pub async fn update(&self, model: AssociationActiveModelEx) -> Result<AssociationModelEx, DbErr> {
         model.update(self.db).await
     }
 

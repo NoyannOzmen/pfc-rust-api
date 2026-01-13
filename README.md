@@ -1,6 +1,6 @@
 # Pet Foster Connect
 
-<img src="./assets/icons/logo.svg" alt="Logo de PetFosterConnect" width="300"/>
+<img src="./static/assets/icons/logo.svg" alt="Logo de PetFosterConnect" width="300"/>
 
 ## Disclaimer
 
@@ -25,7 +25,7 @@ Pour réaliser cette application, nous nous sommes servis de :
 | **Nom** | **Utilité** |
 | -------------- | ---------------- |
 | Rust | Langage |
-| Actix Wev | Framework |
+| Actix Web | Framework |
 | PostgreSQL | Base de données |
 | SeaORM | ORM |
 | Chrono | Dates |
