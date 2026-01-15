@@ -1,5 +1,7 @@
-use crate::database::models::{AnimalActiveModel, AnimalActiveModelEx, AnimalEntity, AnimalModel, AnimalModelEx, AssociationEntity, EspeceEntity, FamilleEntity, MediaEntity, TagEntity};
-use sea_orm::{DeleteResult, EntityLoaderTrait};
+use crate::database::models::animal::{self};
+use crate::database::models::{AnimalActiveModel, AnimalActiveModelEx, AnimalEntity, AnimalModel, AnimalModelEx, AssociationEntity, DemandeEntity, EspeceEntity, FamilleEntity, MediaEntity, TagEntity};
+use crate::database::models::sea_orm_active_enums::Statut::*;
+use sea_orm::{ColumnTrait, DeleteResult, EntityLoaderTrait, QueryFilter};
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait,
 };
@@ -26,7 +28,38 @@ impl<'a> AnimalRepository<'a> {
         Ok(animals)
     }
 
-    //* Shelter Animals have no picture */
+    pub async fn find_fostered(&self, id: i32) -> Result<Vec<AnimalModelEx>, DbErr> {
+        let animals= AnimalEntity::load()
+            .with((AssociationEntity, MediaEntity))
+            .with(MediaEntity)
+            .with(FamilleEntity)
+            .with(EspeceEntity)
+            .with(TagEntity)
+            .filter(animal::COLUMN.association_id.eq(id))
+            .filter(animal::COLUMN.statut.eq(Accueilli))
+            .all(self.db)
+            .await?;
+
+        Ok(animals)
+    }
+
+    pub async fn find_requested(&self, id: i32) -> Result<Vec<AnimalModelEx>, DbErr> {
+        let mut animals= AnimalEntity::load()
+            .with((AssociationEntity, MediaEntity))
+            .with(MediaEntity)
+            .with(FamilleEntity)
+            .with(EspeceEntity)
+            .with(TagEntity)
+            .with((DemandeEntity, FamilleEntity))
+            .filter(animal::COLUMN.association_id.eq(id))
+            .all(self.db)
+            .await?;
+
+        animals = animals.iter().filter(|&animals| !animals.demandes.is_empty()).cloned().collect();
+
+        Ok(animals)
+    }
+
     pub async fn find_by_id(&self, id: i32) -> Result<Option<AnimalModelEx>, DbErr> {
         let animal = AnimalEntity::load()
             .with((AssociationEntity, MediaEntity))

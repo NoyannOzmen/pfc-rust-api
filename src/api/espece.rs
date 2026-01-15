@@ -1,30 +1,31 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+use actix_web::error::{/* ErrorInternalServerError, */ ErrorNotFound, /* ErrorUnprocessableEntity */};
 use actix_web::{Error, HttpResponse, web};
-use log::{info, warn};
+/* use log::{info, warn}; */
 use sea_orm::DbConn;
-use validator::Validate;
+/* use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::models::EspeceActiveModel;
+use crate::database::models::EspeceActiveModel; */
 use crate::database::repositories::EspeceRepository;
-use crate::validators::common_validators::{process_json_validation};
+/* use crate::validators::common_validators::{process_json_validation};
 
-use sea_orm::ActiveValue::Set;
+use sea_orm::ActiveValue::Set; */
 
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_all_species)
-            .post(create_species)
+            /* .post(create_species) */
         )
-        .service(web::resource("/{id}")
+        /* .service(web::resource("/{id}")
             .get(get_species)
             .put(update_species)
             .delete(delete_species)
-        );
+        ) */
+       ;
 }
 
-#[derive(Deserialize, Serialize, Validate)]
+/* #[derive(Deserialize, Serialize, Validate)]
 pub struct SpeciesCreate {
     #[validate(length(
         min = 3,
@@ -42,7 +43,7 @@ pub struct SpeciesUpdate {
         message = "Name must be between 3 and 50 characters"
     ))]
     pub nom: Option<String>,
-}
+} */
 
 pub async fn get_all_species(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let repo = EspeceRepository::new(db.get_ref());
@@ -55,7 +56,7 @@ pub async fn get_all_species(db: web::Data<DbConn>) -> Result<HttpResponse, Erro
     Ok(HttpResponse::Ok().json(species))
 }
 
-pub async fn get_species(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+/* pub async fn get_species(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
     let species_id = path.into_inner();
     let repo = EspeceRepository::new(db.get_ref());
 
@@ -170,4 +171,4 @@ pub async fn delete_species(
             "Failed to delete species (0 rows affected)",
         ))
     }
-}
+} */

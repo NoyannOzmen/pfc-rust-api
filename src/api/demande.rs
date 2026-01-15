@@ -1,6 +1,6 @@
 use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
 use actix_web::{Error, HttpResponse, web};
-use log::{info, warn};
+use log::{info, /* warn */};
 use sea_orm::DbConn;
 
 use sea_orm::prelude::Date;
@@ -14,13 +14,13 @@ use sea_orm::ActiveValue::Set;
 
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
-            .get(get_requests)
+            .get(get_current_requests)
             .post(create_request)
         )
         .service(web::resource("/{id}")
             .get(get_request)
-            .put(update_request)
-            .delete(delete_request)
+            /* .put(update_request)
+            .delete(delete_request) */
         );
 }
 
@@ -33,20 +33,33 @@ pub struct DemandeCreate {
     pub date_fin: Date,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct DemandeUpdate {
+
+/* #[derive(Deserialize, Serialize)]
+    pub struct DemandeUpdate {
     pub famille_id: Option<i32>,
     pub animal_id: Option<i32>,
     pub statut_demande: Option<StatutDemande>,
     pub date_debut: Option<Date>,
     pub date_fin: Option<Date>,
-}
+} */
 
-pub async fn get_requests(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
+
+/* pub async fn get_requests(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let repo = DemandeRepository::new(db.get_ref());
 
     let requests = repo
         .find_all()
+        .await
+        .map_err(|e| ErrorNotFound(format!("Failed to retrieve requests: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(requests))
+}
+ */
+pub async fn get_current_requests(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
+    let repo = DemandeRepository::new(db.get_ref());
+
+    let requests = repo
+        .find_current_requests()
         .await
         .map_err(|e| ErrorNotFound(format!("Failed to retrieve requests: {}", e)))?;
 
@@ -91,6 +104,8 @@ pub async fn create_request(
         ..Default::default()
     };
 
+    //TODO ADD BREAK if already made a request */
+
     let created_request = repo
         .create(request_model)
         .await
@@ -100,7 +115,7 @@ pub async fn create_request(
     Ok(HttpResponse::Created().json(created_request))
 }
 
-pub async fn update_request(
+/* pub async fn update_request(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
     json_request: web::Json<DemandeUpdate>,
@@ -182,4 +197,4 @@ pub async fn delete_request(
             "Failed to delete request (0 rows affected)",
         ))
     }
-}
+} */

@@ -1,14 +1,15 @@
 use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
 use actix_web::{Error, HttpResponse, web};
-use log::{info, warn};
-use sea_orm::DbConn;
+use chrono::{Duration, Local};
+use log::{info, /* warn */};
+use sea_orm::{DbConn};
 use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::models::{AnimalActiveModel, AnimalActiveModelEx};
-use crate::database::models::sea_orm_active_enums::{Sexe, Statut};
-use crate::database::repositories::AnimalRepository;
+use crate::database::models::{AnimalActiveModel, AnimalTagActiveModel, DemandeActiveModel};
+use crate::database::models::sea_orm_active_enums::{Sexe, Statut, StatutDemande};
+use crate::database::repositories::{AnimalRepository, AnimalTagRepository, DemandeRepository};
 use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
@@ -16,12 +17,21 @@ use sea_orm::ActiveValue::Set;
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_animals)
+            /* .post(create_animal) */
+        )
+        .service(web::resource("/nouveau-profil")
             .post(create_animal)
         )
         .service(web::resource("/{id}")
             .get(get_animal)
-            .put(update_animal)
-            .delete(delete_animal)
+            /* .put(update_animal)
+            .delete(delete_animal) */
+        )
+        .service(web::resource("/{id}/requests")
+            .get(get_requests)
+        )
+        .service(web::resource("/{id}/faire-une-demande")
+            .post(request_animal)
         );
 }
 
@@ -32,39 +42,39 @@ pub struct AnimalCreate {
         max = 50,
         message = "Name must be between 3 and 50 characters"
     ))]
-    pub nom: String,
+    pub nom_animal: String,
     #[validate(length(
         min = 3,
         max = 50,
         message = "This must be between 3 and 50 characters"
     ))]
-    pub race: Option<String>,
+    pub race_animal: Option<String>,
     #[validate(length(
         min = 3,
         max = 50,
         message = "Colour name must be between 3 and 50 characters"
     ))]
-    pub couleur: String,
+    pub couleur_animal: String,
     #[validate(range(
         min = 1,
         max = 100,
         message = "Age must be realistic"
     ))]
-    pub age: i32,
-    pub sexe : Sexe,
+    pub age_animal: i32,
+    pub sexe_animal : Sexe,
     #[validate(length(
         min = 3,
         max = 50,
         message = "Please describe this animal using between 3 and 50 characters"
     ))]
-    pub description: String,
-    pub statut: Statut,
+    pub description_animal: String,
+    /* pub statut: Statut, */
     pub association_id: i32,
-    pub famille_id: Option<i32>,
-    pub espece_id: i32,
-    pub animal_tags: Option<Vec<i32>>,
+    /* pub famille_id: Option<i32>, */
+    pub espece_animal: i32,
+    pub tags: Vec<i32>,
 }
-
+/* 
 #[derive(Deserialize, Serialize, Validate)]
 pub struct AnimalUpdate {
     #[validate(length(
@@ -104,7 +114,7 @@ pub struct AnimalUpdate {
     pub espece_id: Option<i32>,
     pub animal_tags: Option<Option<Vec<i32>>>,
 }
-
+ */
 pub async fn get_animals(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let repo = AnimalRepository::new(db.get_ref());
 
@@ -116,7 +126,10 @@ pub async fn get_animals(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().json(animals))
 }
 
-pub async fn get_animal(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+pub async fn get_animal(
+    db: web::Data<DbConn>,
+    path: web::Path<i32>
+) -> Result<HttpResponse, Error> {
     let animal_id = path.into_inner();
     let repo = AnimalRepository::new(db.get_ref());
 
@@ -127,8 +140,60 @@ pub async fn get_animal(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<H
 
     match animal {
         Some(animal) => Ok(HttpResponse::Ok().json(animal)),
-        None => Err(ErrorNotFound(format!("animal with ID {} not found", animal_id))),
+        None => Err(ErrorNotFound(format!("Animal with ID {} not found", animal_id))),
     }
+}
+
+pub async fn get_requests(
+    db: web::Data<DbConn>,
+    path: web::Path<i32>
+) -> Result<HttpResponse, Error> {
+    let animal_id = path.into_inner();
+    let repo = DemandeRepository::new(db.get_ref());
+
+    let requests = repo
+        .find_requests(animal_id)
+        .await
+        .map_err(|e| ErrorNotFound(format!("Failed to retrieve requests: {}", e)))?;
+
+    Ok(HttpResponse::Ok().json(requests))
+}
+
+pub async fn request_animal(
+    db: web::Data<DbConn>,
+    path: web::Path<i32>
+) -> Result<HttpResponse, Error> {
+    let animal_id = path.into_inner();
+
+    //TODO REMOVE HARDCODED */
+    let foster_id = 1;
+
+    info!(
+        "Attempting to create request for animal with ID: {}",
+        animal_id
+    );
+
+    let start_date = Local::now().naive_local().date();
+    let six_months = Duration::days(180);
+    let end_date = Local::now().naive_local().date() + six_months;
+
+    let request_model = DemandeActiveModel {
+        famille_id: Set(foster_id),
+        animal_id: Set(animal_id),
+        statut_demande: Set(StatutDemande::EnAttente),
+        date_debut: Set(start_date),
+        date_fin: Set(end_date),
+        ..Default::default()
+    };
+
+    let repo= DemandeRepository::new(db.get_ref());
+    let new_request = repo
+        .create(request_model)
+        .await
+        .map_err(|e| ErrorNotFound(format!("Failed to create requests: {}", e)))?;
+
+    info!("Request for Animal with ID: {} created with ID: {}", animal_id, new_request.id);
+    Ok(HttpResponse::Created().json(new_request))
 }
 
 pub async fn create_animal(
@@ -137,9 +202,12 @@ pub async fn create_animal(
 ) -> Result<HttpResponse, Error> {
     process_json_validation(&json_animal)?;
 
+    //TODO REMOVE HARDCODED */
+    let shelter_id = 1;
+
     info!(
         "Attempting to create animal with name: {}",
-        json_animal.nom
+        json_animal.nom_animal
     );
 
     let repo = AnimalRepository::new(db.get_ref());
@@ -147,16 +215,15 @@ pub async fn create_animal(
     let animal = json_animal.into_inner();
 
     let animal_model = AnimalActiveModel {
-        nom: Set(animal.nom),
-        race: Set(animal.race),
-        couleur: Set(animal.couleur),
-        age: Set(animal.age),
-        sexe : Set(animal.sexe),
-        description: Set(animal.description),
-        statut: Set(animal.statut),
-        association_id: Set(animal.association_id),
-        famille_id: Set(animal.famille_id),
-        espece_id: Set(animal.espece_id),
+        nom: Set(animal.nom_animal),
+        race: Set(animal.race_animal),
+        couleur: Set(animal.couleur_animal),
+        age: Set(animal.age_animal),
+        sexe : Set(animal.sexe_animal),
+        description: Set(animal.description_animal),
+        statut: Set(Statut::EnRefuge),
+        association_id: Set(shelter_id),
+        espece_id: Set(animal.espece_animal),
         ..Default::default()
     };
 
@@ -166,10 +233,22 @@ pub async fn create_animal(
         .map_err(|e| ErrorInternalServerError(format!("Failed to create animal: {}", e)))?;
 
     info!("Animal created with ID: {}", created_animal.id);
+
+    for tag in animal.tags {
+        let animal_tag_model = AnimalTagActiveModel {
+            animal_id: Set(created_animal.id),
+            tag_id: Set(tag),
+        };
+
+        AnimalTagRepository::new(db.get_ref())
+            .create(animal_tag_model)
+            .await
+            .map_err(|e| ErrorInternalServerError(format!("Failed to create animal_tag: {}", e)))?;
+    }
+
     Ok(HttpResponse::Created().json(created_animal))
 }
-
-pub async fn update_animal(
+/* pub async fn update_animal(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
     json_animal: web::Json<AnimalUpdate>,
@@ -267,4 +346,4 @@ pub async fn delete_animal(
             "Failed to delete animal (0 rows affected)",
         ))
     }
-}
+} */

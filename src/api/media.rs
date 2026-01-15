@@ -1,6 +1,6 @@
 use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
 use actix_web::{Error, HttpResponse, web};
-use log::{info, warn};
+use log::{info, /* warn */};
 use sea_orm::DbConn;
 
 use serde::{Deserialize, Serialize};
@@ -15,11 +15,12 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
             .get(get_medias)
             .post(create_media)
         )
-        .service(web::resource("/{id}")
+        /* .service(web::resource("/{id}")
             .get(get_media)
             .put(update_media)
             .delete(delete_media)
-        );
+        ); */
+        ;
 }
 
 #[derive(Deserialize, Serialize)]
@@ -29,15 +30,14 @@ pub struct MediaCreate {
     pub animal_id: Option<i32>,
     pub association_id: Option<i32>,
 }
-
-#[derive(Deserialize, Serialize)]
+/* #[derive(Deserialize, Serialize)]
 pub struct MediaUpdate {
     pub url: Option<String>,
     pub ordre: Option<i32>,
     pub animal_id: Option<Option<i32>>,
     pub association_id: Option<Option<i32>>,
 }
-
+ */
 pub async fn get_medias(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let repo = MediaRepository::new(db.get_ref());
 
@@ -48,8 +48,7 @@ pub async fn get_medias(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
 
     Ok(HttpResponse::Ok().json(medias))
 }
-
-pub async fn get_media(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+/* pub async fn get_media(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
     let media_id = path.into_inner();
     let repo = MediaRepository::new(db.get_ref());
 
@@ -63,7 +62,7 @@ pub async fn get_media(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<Ht
         None => Err(ErrorNotFound(format!("Media with ID {} not found", media_id))),
     }
 }
-
+ */
 pub async fn create_media(
     db: web::Data<DbConn>,
     json_media: web::Json<MediaCreate>,
@@ -94,8 +93,7 @@ pub async fn create_media(
     info!("Media created with ID: {}", created_media.id);
     Ok(HttpResponse::Created().json(created_media))
 }
-
-pub async fn update_media(
+/* pub async fn update_media(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
     json_media: web::Json<MediaUpdate>,
@@ -175,3 +173,4 @@ pub async fn delete_media(
         ))
     }
 }
+ */

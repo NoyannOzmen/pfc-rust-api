@@ -5,17 +5,17 @@ use sea_orm::DbConn;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::auth::hash_password;
-use crate::database::models::{UtilisateurActiveModel, UtilisateurActiveModelEx};
+/* use crate::auth::hash_password; */
+use crate::database::models::{/* UtilisateurActiveModel, */ UtilisateurActiveModelEx};
 use crate::database::repositories::UtilisateurRepository;
 use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
-pub fn configure_public(cfg: &mut web::ServiceConfig) {
+/* pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("").post(create_user)
         );
-}
+} */
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
@@ -28,7 +28,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         );
 }
 
-#[derive(Deserialize, Serialize, Validate)]
+/* #[derive(Deserialize, Serialize, Validate)]
 pub struct UserCreate {
    #[validate(length(
         min = 8,
@@ -43,7 +43,7 @@ pub struct UserCreate {
     pub confirmation: String,
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
-}
+} */
 
 #[derive(Deserialize, Serialize, Validate)]
 pub struct UserUpdate {
@@ -83,7 +83,7 @@ pub async fn get_user(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<Htt
     }
 }
 
-pub async fn create_user(
+/* pub async fn create_user(
     db: web::Data<DbConn>,
     json_user: web::Json<UserCreate>,
 ) -> Result<HttpResponse, Error> {
@@ -123,7 +123,7 @@ pub async fn create_user(
 
     info!("User created with ID: {}", created_user.id);
     Ok(HttpResponse::Created().json(created_user))
-}
+} */
 
 pub async fn update_user(
     db: web::Data<DbConn>,

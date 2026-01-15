@@ -12,9 +12,11 @@ use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
-pub fn configure_public(cfg: &mut web::ServiceConfig) {
+pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_tags)
+        )
+        .service(web::resource("/create")
             .post(create_tag)
         )
         .service(web::resource("/{id}")

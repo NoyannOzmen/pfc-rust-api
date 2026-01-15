@@ -13,17 +13,22 @@ use crate::validators::common_validators::{process_json_validation, validate_pho
 
 use sea_orm::ActiveValue::Set;
 
-pub fn configure_public(cfg: &mut web::ServiceConfig) {
+pub fn configure_register(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
-            .get(get_fosters)
-        )
-        .service(web::resource("/register")
             .post(create_foster)
+        );
+}
+
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
+            /* .get(get_fosters) */
+            .post(update_foster)
+        )
+        .service(web::resource("/delete")
+            .post(delete_foster)
         )
         .service(web::resource("/{id}")
             .get(get_foster)
-            .put(update_foster)
-            .delete(delete_foster)
         );
 }
 
@@ -122,12 +127,6 @@ pub struct FosterUpdate {
     #[validate(custom(function = validate_zipcode))]
     pub code_postal: Option<String>,
     #[validate(length(
-        min = 4,
-        max = 42,
-        message = "Country name must be between 4 and 42 characters"
-    ))]
-    pub pays: Option<String>,
-    #[validate(length(
         min = 3,
         max = 50,
         message = "Please describe your home using between 3 and 50 characters"
@@ -141,8 +140,7 @@ pub struct FosterUpdate {
     pub terrain: Option<Option<String>>,
     pub utilisateur_id: Option<i32>,
 }
-
-pub async fn get_fosters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
+/* pub async fn get_fosters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let repo = FamilleRepository::new(db.get_ref());
 
     let fosters = repo
@@ -152,7 +150,7 @@ pub async fn get_fosters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
 
     Ok(HttpResponse::Ok().json(fosters))
 }
-
+*/
 pub async fn get_foster(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
     let foster_id = path.into_inner();
     let repo = FamilleRepository::new(db.get_ref());
@@ -235,12 +233,14 @@ pub async fn create_foster(
 
 pub async fn update_foster(
     db: web::Data<DbConn>,
-    path: web::Path<i32>,
+    /* path: web::Path<i32>, */
     json_foster: web::Json<FosterUpdate>,
 ) -> Result<HttpResponse, Error> {
     process_json_validation(&json_foster)?;
 
-    let foster_id = path.into_inner();
+    //TODO REMOVE HARDCODED */
+    let foster_id = 1;
+    /* let foster_id = path.into_inner(); */
 
     info!("Attempting to update Foster with ID: {}", foster_id);
 
@@ -276,9 +276,9 @@ pub async fn update_foster(
             if let Some(code_postal) = foster.code_postal {
                 foster_active_model.code_postal = Set(code_postal);
             }
-            if let Some(pays) = foster.pays {
+            /* if let Some(pays) = foster.pays {
                 foster_active_model.pays = Set(pays);
-            }
+            } */
             if let Some(hebergement) = foster.hebergement {
                 foster_active_model.hebergement = Set(hebergement);
             }
@@ -300,9 +300,13 @@ pub async fn update_foster(
 
 pub async fn delete_foster(
     db: web::Data<DbConn>,
-    path: web::Path<i32>,
+    /* path: web::Path<i32>, */
 ) -> Result<HttpResponse, Error> {
-    let foster_id = path.into_inner();
+
+    //TODO REMOVE HARDCODED */
+    let foster_id = 6;
+    /* let foster_id = path.into_inner(); */
+
     let repo = FamilleRepository::new(db.get_ref());
 
     info!("Attempting to delete foster with ID: {}", foster_id);
@@ -315,18 +319,40 @@ pub async fn delete_foster(
         return Err(ErrorNotFound(format!("Foster with ID {} not found", foster_id)));
     }
 
+    //TODO ADD BREAK if currently fostered */
+
+    //TODO REMOVE HARDCODED */
+    let user_id = 9;
+
+    let user_repo = UtilisateurRepository::new(db.get_ref());
+
+    let user = user_repo
+        .find_by_id(user_id)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+    if user.is_none() {
+        return Err(ErrorNotFound(format!("User with ID {} not found", user_id)));
+    }
+
     let delete_result = repo
         .delete(foster_id)
         .await
         .map_err(|e| ErrorInternalServerError(format!("Failed to delete foster: {}", e)))?;
 
-    if delete_result.rows_affected > 0 {
+    let delete_user = user_repo
+        .delete(user_id)
+        .await
+        .map_err(|e| ErrorInternalServerError(format!("Failed to delete user: {}", e)))?;
+
+    if delete_result.rows_affected > 0 && delete_user.rows_affected > 0 {
         info!("Foster with ID {} successfully deleted", foster_id);
+        info!("User with ID {} also successfully deleted", user_id);
         Ok(HttpResponse::NoContent().finish())
     } else {
         warn!("Foster with ID {} was not deleted (0 rows affected)", foster_id);
+        warn!("User with ID {} was not deleted (0 rows affected)", user_id);
         Err(ErrorInternalServerError(
-            "Failed to delete foster (0 rows affected)",
+            "Failed to delete either foster or user (0 rows affected)",
         ))
     }
 }

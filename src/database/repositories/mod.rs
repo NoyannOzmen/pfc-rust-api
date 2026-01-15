@@ -9,6 +9,7 @@ pub mod tag_repository;
 pub mod utilisateur_repository;
 
 pub use animal_repository::AnimalRepository;
+pub use animal_tag_repository::AnimalTagRepository;
 pub use association_repository::AssociationRepository;
 pub use demande_repository::DemandeRepository;
 pub use espece_repository::EspeceRepository;

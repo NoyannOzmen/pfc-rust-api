@@ -26,12 +26,14 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
         .route("/", web::get().to(hello))
         .service(web::scope("/connexion").configure(|c| auth::configure(c)))
         .service(web::scope("/animaux").configure(|c| animal::configure_public(c)))
+        .service(web::scope("/associations/inscription").configure(|c| association::configure_register(c)))
+        .service(web::scope("/associations/profil").configure(|c| association::configure(c)))
         .service(web::scope("/associations").configure(|c| association::configure_public(c)))
         .service(web::scope("/demandes").configure(|c| demande::configure_public(c)))
         .service(web::scope("/especes").configure(|c| espece::configure_public(c)))
-        .service(web::scope("/famille").configure(|c| famille::configure_public(c)))
+        .service(web::scope("/famille/inscription").configure(|c| famille::configure_register(c)))       
+        .service(web::scope("/famille/profil").configure(|c| famille::configure(c)))
         .service(web::scope("/media").configure(|c| media::configure_public(c)))
-        .service(web::scope("/tags").configure(|c| tag::configure_public(c)))
-        .service(web::scope("/users").configure(|c| utilisateur::configure(c)))
-        .service(web::scope("/register").configure(|c| utilisateur::configure_public(c)));
+        .service(web::scope("/tags").configure(|c| tag::configure(c)))
+        .service(web::scope("/users").configure(|c| utilisateur::configure(c)));
 }

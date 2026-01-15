@@ -42,7 +42,8 @@ pub use demande:: {
  Column as DemandeColumn,
  Entity as DemandeEntity,
  Model as DemandeModel, 
- ModelEx as DemandeModelEx, 
+ ModelEx as DemandeModelEx,
+ ActiveModelEx as DemandeActiveModelEx, 
 };
 
 pub use espece:: {
