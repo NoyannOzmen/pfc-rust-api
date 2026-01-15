@@ -1,5 +1,5 @@
-use crate::database::models::{FamilleActiveModel, FamilleEntity, FamilleModel};
-use sea_orm::DeleteResult;
+use crate::database::models::{AnimalEntity, FamilleActiveModel, FamilleActiveModelEx, FamilleEntity, FamilleModel, FamilleModelEx};
+use sea_orm::{DeleteResult, EntityLoaderTrait};
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait,
 };
@@ -17,15 +17,21 @@ impl<'a> FamilleRepository<'a> {
         FamilleEntity::find().all(self.db).await
     }
 
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<FamilleModel>, DbErr> {
-        FamilleEntity::find_by_id(id).one(self.db).await
+    pub async fn find_by_id(&self, id: i32) -> Result<Option<FamilleModelEx>, DbErr> {
+        let foster = FamilleEntity::load()
+            .with(AnimalEntity)
+            .filter_by_id(id)
+            .one(self.db)
+            .await?;
+
+        Ok(foster)
     }
 
     pub async fn create(&self, model: FamilleActiveModel) -> Result<FamilleModel, DbErr> {
         model.insert(self.db).await
     }
 
-    pub async fn update(&self, model: FamilleActiveModel) -> Result<FamilleModel, DbErr> {
+    pub async fn update(&self, model: FamilleActiveModelEx) -> Result<FamilleModelEx, DbErr> {
         model.update(self.db).await
     }
 

@@ -1,11 +1,12 @@
-use actix_web::error::ErrorInternalServerError;
-use actix_web::{Error};
+/* use actix_web::error::ErrorInternalServerError;
+use actix_web::{Error}; */
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::auth::CustomError;
 use crate::database::models::UtilisateurModelEx;
 
 #[derive(Deserialize, Serialize)]
@@ -50,16 +51,13 @@ pub fn generate_claims(user: &UtilisateurModelEx) -> Claims {
     }
 }
 
-pub fn generate_token_from_claims(claims: &Claims) -> Result<String, Error> {
+pub fn generate_token_from_claims(claims: &Claims) -> Result<String, CustomError> {
     encode(
         &Header::default(),
         claims,
         &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
     )
-    .map_err(|e| {
-        log::error!("Error generating token: {}", e);
-        ErrorInternalServerError(e)
-    })
+    .map_err(|_e| {log::error!("Error generating token: {}", _e); CustomError::InternalError})
 }
 
 pub fn decode_jwt(token: &str) -> Result<User, String> {

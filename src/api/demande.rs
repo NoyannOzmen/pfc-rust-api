@@ -1,4 +1,4 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
 use log::{info, /* warn */};
 use sea_orm::DbConn;
@@ -6,6 +6,7 @@ use sea_orm::DbConn;
 use sea_orm::prelude::Date;
 use serde::{Deserialize, Serialize};
 
+use crate::auth::CustomError;
 use crate::database::models::DemandeActiveModel;
 use crate::database::models::sea_orm_active_enums::StatutDemande;
 use crate::database::repositories::DemandeRepository;
@@ -61,23 +62,23 @@ pub async fn get_current_requests(db: web::Data<DbConn>) -> Result<HttpResponse,
     let requests = repo
         .find_current_requests()
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve requests: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(requests))
 }
 
-pub async fn get_request(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+pub async fn get_request(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
     let request_id = path.into_inner();
     let repo = DemandeRepository::new(db.get_ref());
 
     let request = repo
         .find_by_id(request_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve request: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     match request {
         Some(request) => Ok(HttpResponse::Ok().json(request)),
-        None => Err(ErrorNotFound(format!("Request with ID {} not found", request_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
@@ -104,12 +105,10 @@ pub async fn create_request(
         ..Default::default()
     };
 
-    //TODO ADD BREAK if already made a request */
-
     let created_request = repo
         .create(request_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create request: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("Request created with ID: {}", created_request.id);
     Ok(HttpResponse::Created().json(created_request))

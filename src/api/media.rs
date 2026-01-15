@@ -1,10 +1,11 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
 use log::{info, /* warn */};
 use sea_orm::DbConn;
 
 use serde::{Deserialize, Serialize};
 
+use crate::auth::CustomError;
 use crate::database::models::MediaActiveModel;
 use crate::database::repositories::MediaRepository;
 
@@ -44,7 +45,7 @@ pub async fn get_medias(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let medias = repo
         .find_all()
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve medias: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(medias))
 }
@@ -88,7 +89,7 @@ pub async fn create_media(
     let created_media = repo
         .create(media_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create media: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("Media created with ID: {}", created_media.id);
     Ok(HttpResponse::Created().json(created_media))

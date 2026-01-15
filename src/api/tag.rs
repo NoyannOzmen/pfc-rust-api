@@ -1,4 +1,4 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
@@ -6,6 +6,7 @@ use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
+use crate::auth::CustomError;
 use crate::database::models::TagActiveModel;
 use crate::database::repositories::TagRepository;
 use crate::validators::common_validators::{process_json_validation};
@@ -58,29 +59,29 @@ pub struct TagUpdate {
     pub description: Option<String>,
 }
 
-pub async fn get_tags(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
+pub async fn get_tags(db: web::Data<DbConn>) -> Result<HttpResponse, CustomError> {
     let repo = TagRepository::new(db.get_ref());
 
     let tags = repo
         .find_all()
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve tags: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(tags))
 }
 
-pub async fn get_tag(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+pub async fn get_tag(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
     let tag_id = path.into_inner();
     let repo = TagRepository::new(db.get_ref());
 
     let tag = repo
         .find_by_id(tag_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve tag: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     match tag {
         Some(tag) => Ok(HttpResponse::Ok().json(tag)),
-        None => Err(ErrorNotFound(format!("Tag with ID {} not found", tag_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
@@ -108,7 +109,7 @@ pub async fn create_tag(
     let created_tag = repo
         .create(tag_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create tag: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("Tag created with ID: {}", created_tag.id);
     Ok(HttpResponse::Created().json(created_tag))
@@ -118,7 +119,7 @@ pub async fn update_tag(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
     json_tag: web::Json<TagUpdate>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
 
     let tag_id = path.into_inner();
 
@@ -129,7 +130,7 @@ pub async fn update_tag(
     let tag_data = repo
         .find_by_id(tag_id)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?;
+        .map_err(|_e| CustomError::InternalError)?;
 
     match tag_data {
         Some(tag_data) => {
@@ -148,19 +149,19 @@ pub async fn update_tag(
             let updated_tag = repo
                 .update(tag_active_model)
                 .await
-                .map_err(|e| ErrorInternalServerError(format!("Failed to update tag: {}", e)))?;
+                .map_err(|_e| CustomError::UpdateError)?;
 
             info!("Tag with ID {} updated", tag_id);
             Ok(HttpResponse::Ok().json(updated_tag))
         }
-        None => Err(ErrorNotFound(format!("Tag with ID {} not found", tag_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
 pub async fn delete_tag(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     let tag_id = path.into_inner();
     let repo = TagRepository::new(db.get_ref());
 
@@ -169,23 +170,21 @@ pub async fn delete_tag(
     let tag = repo
         .find_by_id(tag_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|_e| CustomError::InternalError)?;
     if tag.is_none() {
-        return Err(ErrorNotFound(format!("Tag with ID {} not found", tag_id)));
+        return Err(CustomError::NotFound);
     }
 
     let delete_result = repo
         .delete(tag_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to delete tag: {}", e)))?;
+        .map_err(|_e| CustomError::DeletionError)?;
 
     if delete_result.rows_affected > 0 {
         info!("Tag with ID {} successfully deleted", tag_id);
         Ok(HttpResponse::NoContent().finish())
     } else {
         warn!("Tag with ID {} was not deleted (0 rows affected)", tag_id);
-        Err(ErrorInternalServerError(
-            "Failed to delete tag (0 rows affected)",
-        ))
+        Err(CustomError::DeletionError)
     }
 }

@@ -53,6 +53,16 @@ impl<'a> DemandeRepository<'a> {
 
         Ok(request)
     }
+    
+    pub async fn find_existing(&self, animal_id: i32, foster_id: i32) -> Result<Option<DemandeModelEx>, DbErr> {
+        let existing = DemandeEntity::load()
+            .filter(demande::COLUMN.animal_id.eq(animal_id))
+            .filter(demande::COLUMN.famille_id.eq(foster_id))
+            .one(self.db)
+            .await?;
+
+        Ok(existing)
+    }
 
     pub async fn create(&self, model: DemandeActiveModel) -> Result<DemandeModel, DbErr> {
         model.insert(self.db).await

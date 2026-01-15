@@ -1,7 +1,9 @@
-use actix_web::{Error, error::ErrorUnprocessableEntity, web};
+use actix_web::{/* Error, error::ErrorUnprocessableEntity, */ web};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use validator::{Validate, ValidationError, ValidationErrors};
+
+use crate::auth::CustomError;
 
 pub static PHONE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(0|\+33 )[1-9]([\-. ]?[0-9]{2} ){3}([\-. ]?[0-9]{2})|([0-9]{8})$").unwrap());
 pub static ZIPCODE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(?:0[1-9]|[1-8]\d|9[0-8])\d{3}$").unwrap());
@@ -37,15 +39,15 @@ pub fn validate_siret(siret: &str) -> Result<(), ValidationError> {
     }
 }
 
-pub fn process_validation_errors<T: Validate>(item: &T) -> Result<(), Error> {
+pub fn process_validation_errors<T: Validate>(item: &T) -> Result<(), CustomError> {
     if let Err(validation_errors) = item.validate() {
         let error_messages = format_validation_errors(validation_errors);
-        return Err(ErrorUnprocessableEntity(error_messages));
+        return Err(CustomError::ValidationError { error_messages: (error_messages) });
     }
     Ok(())
 }
 
-pub fn process_json_validation<T: Validate>(json: &web::Json<T>) -> Result<(), Error> {
+pub fn process_json_validation<T: Validate>(json: &web::Json<T>) -> Result<(), CustomError> {
     process_validation_errors(&json.0)
 }
 

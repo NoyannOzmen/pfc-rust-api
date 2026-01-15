@@ -1,4 +1,4 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, /* ErrorUnprocessableEntity */};
+/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound,  ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
 use chrono::{Duration, Local};
 use log::{info, /* warn */};
@@ -7,6 +7,7 @@ use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
+use crate::auth::CustomError;
 use crate::database::models::{AnimalActiveModel, AnimalTagActiveModel, DemandeActiveModel};
 use crate::database::models::sea_orm_active_enums::{Sexe, Statut, StatutDemande};
 use crate::database::repositories::{AnimalRepository, AnimalTagRepository, DemandeRepository};
@@ -121,7 +122,7 @@ pub async fn get_animals(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
     let animals = repo
         .find_all()
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve animals: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(animals))
 }
@@ -129,18 +130,18 @@ pub async fn get_animals(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
 pub async fn get_animal(
     db: web::Data<DbConn>,
     path: web::Path<i32>
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     let animal_id = path.into_inner();
     let repo = AnimalRepository::new(db.get_ref());
 
     let animal = repo
         .find_by_id(animal_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve animal: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     match animal {
         Some(animal) => Ok(HttpResponse::Ok().json(animal)),
-        None => Err(ErrorNotFound(format!("Animal with ID {} not found", animal_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
@@ -154,7 +155,7 @@ pub async fn get_requests(
     let requests = repo
         .find_requests(animal_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve requests: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(requests))
 }
@@ -162,7 +163,7 @@ pub async fn get_requests(
 pub async fn request_animal(
     db: web::Data<DbConn>,
     path: web::Path<i32>
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     let animal_id = path.into_inner();
 
     //TODO REMOVE HARDCODED */
@@ -187,13 +188,32 @@ pub async fn request_animal(
     };
 
     let repo= DemandeRepository::new(db.get_ref());
+
+    if let Some(_) = repo
+        .find_existing(animal_id, foster_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?
+    {
+        return Err(CustomError::AlreadyRequested);
+    }
+
     let new_request = repo
         .create(request_model)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to create requests: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     info!("Request for Animal with ID: {} created with ID: {}", animal_id, new_request.id);
-    Ok(HttpResponse::Created().json(new_request))
+
+    #[derive(Serialize)]
+    struct RequestResponse {
+        message: String,
+    }
+
+    let request_response = RequestResponse {
+        message : "Votre demande a bien été prise en compte !".to_string()
+    };
+    
+    Ok(HttpResponse::Created().json(request_response))
 }
 
 pub async fn create_animal(
@@ -230,7 +250,7 @@ pub async fn create_animal(
     let created_animal = repo
         .create(animal_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create animal: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("Animal created with ID: {}", created_animal.id);
 
@@ -243,7 +263,7 @@ pub async fn create_animal(
         AnimalTagRepository::new(db.get_ref())
             .create(animal_tag_model)
             .await
-            .map_err(|e| ErrorInternalServerError(format!("Failed to create animal_tag: {}", e)))?;
+            .map_err(|_e| CustomError::CreationError)?;
     }
 
     Ok(HttpResponse::Created().json(created_animal))

@@ -1,13 +1,13 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity};
-use actix_web::{Error, HttpResponse, web};
+/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
+use actix_web::{HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
 use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::auth::hash_password;
-use crate::database::models::{FamilleActiveModel, UtilisateurActiveModel};
+use crate::auth::{CustomError, hash_password};
+use crate::database::models::{FamilleActiveModel, FamilleActiveModelEx, UtilisateurActiveModel};
 use crate::database::repositories::{FamilleRepository, UtilisateurRepository};
 use crate::validators::common_validators::{process_json_validation, validate_phone, validate_zipcode};
 
@@ -151,25 +151,25 @@ pub struct FosterUpdate {
     Ok(HttpResponse::Ok().json(fosters))
 }
 */
-pub async fn get_foster(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+pub async fn get_foster(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
     let foster_id = path.into_inner();
     let repo = FamilleRepository::new(db.get_ref());
 
     let foster = repo
         .find_by_id(foster_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve foster: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     match foster {
         Some(foster) => Ok(HttpResponse::Ok().json(foster)),
-        None => Err(ErrorNotFound(format!("Foster with ID {} not found", foster_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
 pub async fn create_foster(
     db: web::Data<DbConn>,
     json_foster: web::Json<FosterCreate>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_foster)?;
 
     info!(
@@ -182,11 +182,9 @@ pub async fn create_foster(
     if let Some(_) = user_repo
         .find_by_email(&json_foster.email)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?
+        .map_err(|_e| CustomError::InternalError)?
     {
-        return Err(ErrorUnprocessableEntity(format!(
-            "Something went wrong creating user",
-        )));
+        return Err(CustomError::BadClientData);
     }
 
     let hashed_password = hash_password(&json_foster.mot_de_passe)?;
@@ -202,7 +200,7 @@ pub async fn create_foster(
     let created_user = user_repo
         .create(user_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create user: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("User created with ID: {}", created_user.id);
 
@@ -225,7 +223,7 @@ pub async fn create_foster(
     let created_foster = repo
         .create(foster_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create foster: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("Foster created with ID: {}", created_foster.id);
     Ok(HttpResponse::Created().json(created_foster))
@@ -235,7 +233,7 @@ pub async fn update_foster(
     db: web::Data<DbConn>,
     /* path: web::Path<i32>, */
     json_foster: web::Json<FosterUpdate>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_foster)?;
 
     //TODO REMOVE HARDCODED */
@@ -250,11 +248,11 @@ pub async fn update_foster(
     let foster_data = repo
         .find_by_id(foster_id)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?;
+        .map_err(|_e| CustomError::InternalError)?;
 
     match foster_data {
         Some(foster_data) => {
-            let mut foster_active_model: FamilleActiveModel = foster_data.into();
+            let mut foster_active_model: FamilleActiveModelEx = foster_data.into();
 
             let foster = json_foster.into_inner();
 
@@ -289,22 +287,22 @@ pub async fn update_foster(
             let updated_foster = repo
                 .update(foster_active_model)
                 .await
-                .map_err(|e| ErrorInternalServerError(format!("Failed to update foster: {}", e)))?;
+                .map_err(|_e| CustomError::UpdateError)?;
 
             info!("Foster with ID {} updated", foster_id);
             Ok(HttpResponse::Ok().json(updated_foster))
         }
-        None => Err(ErrorNotFound(format!("Foster with ID {} not found", foster_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
 pub async fn delete_foster(
     db: web::Data<DbConn>,
     /* path: web::Path<i32>, */
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
 
     //TODO REMOVE HARDCODED */
-    let foster_id = 6;
+    let foster_id = 1;
     /* let foster_id = path.into_inner(); */
 
     let repo = FamilleRepository::new(db.get_ref());
@@ -314,35 +312,36 @@ pub async fn delete_foster(
     let foster = repo
         .find_by_id(foster_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|_e| CustomError::InternalError)?;
     if foster.is_none() {
-        return Err(ErrorNotFound(format!("Foster with ID {} not found", foster_id)));
+        return Err(CustomError::NotFound);
+    }
+    if !foster.unwrap().animals.is_empty() {
+        return Err(CustomError::FosteredError);
     }
 
-    //TODO ADD BREAK if currently fostered */
-
     //TODO REMOVE HARDCODED */
-    let user_id = 9;
+    let user_id = 2;
 
     let user_repo = UtilisateurRepository::new(db.get_ref());
 
     let user = user_repo
         .find_by_id(user_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|_e| CustomError::InternalError)?;
     if user.is_none() {
-        return Err(ErrorNotFound(format!("User with ID {} not found", user_id)));
+        return Err(CustomError::NotFound);
     }
 
     let delete_result = repo
         .delete(foster_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to delete foster: {}", e)))?;
+        .map_err(|_e| CustomError::DeletionError)?;
 
     let delete_user = user_repo
         .delete(user_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to delete user: {}", e)))?;
+        .map_err(|_e| CustomError::DeletionError)?;
 
     if delete_result.rows_affected > 0 && delete_user.rows_affected > 0 {
         info!("Foster with ID {} successfully deleted", foster_id);
@@ -351,8 +350,6 @@ pub async fn delete_foster(
     } else {
         warn!("Foster with ID {} was not deleted (0 rows affected)", foster_id);
         warn!("User with ID {} was not deleted (0 rows affected)", user_id);
-        Err(ErrorInternalServerError(
-            "Failed to delete either foster or user (0 rows affected)",
-        ))
+        Err(CustomError::DeletionError)
     }
 }

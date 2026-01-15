@@ -1,9 +1,10 @@
-use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
-use actix_web::{Error, HttpResponse, web};
+/* use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized}; */
+use actix_web::{HttpResponse, web};
 use sea_orm::DbConn;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+use crate::auth::CustomError;
 use crate::auth::jwt::{generate_claims, generate_token_from_claims};
 use crate::auth::password::verify_password;
 use crate::database::models::UtilisateurModelEx;
@@ -28,7 +29,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.route("", web::post().to(login));
 }
 
-async fn login(db: web::Data<DbConn>, req: web::Json<LoginRequest>) -> Result<HttpResponse, Error> {
+async fn login(db: web::Data<DbConn>, req: web::Json<LoginRequest>) -> Result<HttpResponse, CustomError> {
     process_json_validation(&req)?;
 
     let user_repository = UtilisateurRepository::new(db.get_ref());
@@ -36,15 +37,15 @@ async fn login(db: web::Data<DbConn>, req: web::Json<LoginRequest>) -> Result<Ht
     let user = match user_repository
         .find_by_email(&req.email)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?
+        .map_err(|_e| CustomError::InternalError)?
     {
         Some(user) => user,
-        None => return Err(ErrorUnauthorized("Account not registered".to_string())),
+        None => return Err(CustomError::WrongLogin),
     };
 
     let is_valid = verify_password(&req.mot_de_passe, &user.mot_de_passe)?;
     if !is_valid {
-        return Err(ErrorUnauthorized("Invalid credentials"));
+        return Err(CustomError::WrongLogin);
     }
 
     let claims = generate_claims(&user);

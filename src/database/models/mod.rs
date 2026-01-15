@@ -60,6 +60,7 @@ pub use famille:: {
  Entity as FamilleEntity,
  Model as FamilleModel, 
  ModelEx as FamilleModelEx,
+ ActiveModelEx as FamilleActiveModelEx,
 };
 
 pub use media:: {

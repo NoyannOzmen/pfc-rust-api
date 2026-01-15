@@ -1,7 +1,8 @@
-use actix_web::error::{/* ErrorInternalServerError, */ ErrorNotFound, /* ErrorUnprocessableEntity */};
+/* use actix_web::error::{ ErrorInternalServerError,  ErrorNotFound,  ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
 /* use log::{info, warn}; */
 use sea_orm::DbConn;
+use crate::auth::CustomError;
 /* use validator::Validate;
 
 use serde::{Deserialize, Serialize};
@@ -51,7 +52,7 @@ pub async fn get_all_species(db: web::Data<DbConn>) -> Result<HttpResponse, Erro
     let species = repo
         .find_all()
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve species: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(species))
 }

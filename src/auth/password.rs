@@ -1,10 +1,12 @@
-use actix_web::{Error};
+/* use actix_web::{Error}; */
 use bcrypt::{hash, verify};
 
-pub fn hash_password(password: &str) -> Result<String, Error> {
+use crate::auth::CustomError;
+
+pub fn hash_password(password: &str) -> Result<String, CustomError> {
     Ok(hash(password, 8).unwrap())
 }
 
-pub fn verify_password(password: &str, hashed: &str) -> Result<bool, Error> {
+pub fn verify_password(password: &str, hashed: &str) -> Result<bool, CustomError> {
     Ok(verify(password, &hashed).unwrap())
 }

@@ -1,4 +1,4 @@
-use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity};
+/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
 use actix_web::{Error, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
@@ -6,7 +6,7 @@ use validator::Validate;
 
 use serde::{Deserialize, Serialize};
 
-use crate::auth::hash_password;
+use crate::auth::{CustomError, hash_password};
 use crate::database::models::{AssociationActiveModel, AssociationActiveModelEx, DemandeActiveModelEx, UtilisateurActiveModel};
 use crate::database::repositories::{AnimalRepository, AssociationRepository, DemandeRepository, UtilisateurRepository};
 use crate::database::models::sea_orm_active_enums::StatutDemande::*;
@@ -177,30 +177,30 @@ pub async fn get_shelters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> 
     let shelters = repo
         .find_all()
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve shelters: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(shelters))
 }
 
-pub async fn get_shelter(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+pub async fn get_shelter(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
     let shelter_id = path.into_inner();
     let repo = AssociationRepository::new(db.get_ref());
 
     let shelter = repo
         .find_by_id(shelter_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve shelter: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
     
     match shelter {
         Some(shelter) => Ok(HttpResponse::Ok().json(shelter)),
-        None => Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id))),
+        None => Err(CustomError::NotFound)
     }
 }
 
 pub async fn create_shelter(
     db: web::Data<DbConn>,
     json_shelter: web::Json<AssociationCreate>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_shelter)?;
 
     info!(
@@ -213,11 +213,9 @@ pub async fn create_shelter(
     if let Some(_) = user_repo
         .find_by_email(&json_shelter.email)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?
+        .map_err(|_e| CustomError::InternalError)?
     {
-        return Err(ErrorUnprocessableEntity(format!(
-            "Something went wrong creating user",
-        )));
+        return Err(CustomError::BadClientData);
     }
 
     let hashed_password = hash_password(&json_shelter.mot_de_passe)?;
@@ -233,7 +231,7 @@ pub async fn create_shelter(
     let created_user = user_repo
         .create(user_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create user: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("User created with ID: {}", created_user.id);
 
@@ -257,7 +255,7 @@ pub async fn create_shelter(
     let created_shelter = repo
         .create(shelter_model)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to create shelter: {}", e)))?;
+        .map_err(|_e| CustomError::CreationError)?;
 
     info!("Shelter created with ID: {}", created_shelter.id);
     Ok(HttpResponse::Created().json(created_shelter))
@@ -267,7 +265,7 @@ pub async fn update_shelter(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
     json_shelter: web::Json<AssociationUpdate>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_shelter)?;
 
     let shelter_id = path.into_inner();
@@ -279,7 +277,7 @@ pub async fn update_shelter(
     let shelter_data = repo
         .find_by_id(shelter_id)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?;
+        .map_err(|_e| CustomError::InternalError)?;
 
     match shelter_data {
         Some(shelter_data) => {
@@ -321,19 +319,19 @@ pub async fn update_shelter(
             let updated_shelter = repo
                 .update(shelter_active_model)
                 .await
-                .map_err(|e| ErrorInternalServerError(format!("Failed to update shelter: {}", e)))?;
+                .map_err(|_e| CustomError::UpdateError)?;
 
             info!("Shelter with ID {} updated", shelter_id);
             Ok(HttpResponse::Ok().json(updated_shelter))
         }
-        None => Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
 pub async fn delete_shelter(
     db: web::Data<DbConn>,
     /* path: web::Path<i32>, */
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
 
     //TODO REMOVE HARDCODED */
     /* let shelter_id = path.into_inner(); */
@@ -345,12 +343,13 @@ pub async fn delete_shelter(
     let shelter = repo
         .find_by_id(shelter_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|_e| CustomError::InternalError)?;
     if shelter.is_none() {
-        return Err(ErrorNotFound(format!("Shelter with ID {} not found", shelter_id)));
+        return Err(CustomError::NotFound);
     }
-
-    //TODO ADD BREAK if currently sheltering */
+    if !shelter.unwrap().pensionnaires.is_empty() {
+        return Err(CustomError::ShelteredError);
+    }
 
     //TODO REMOVE HARDCODED */
     let user_id = 10;
@@ -360,20 +359,20 @@ pub async fn delete_shelter(
     let user = user_repo
         .find_by_id(user_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Database error: {}", e)))?;
+        .map_err(|_e| CustomError::InternalError)?;
     if user.is_none() {
-        return Err(ErrorNotFound(format!("User with ID {} not found", user_id)));
+        return Err(CustomError::NotFound);
     }
 
     let delete_result = repo
         .delete(shelter_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to delete shelter: {}", e)))?;
+        .map_err(|_e| CustomError::DeletionError)?;
 
     let delete_user = user_repo
         .delete(user_id)
         .await
-        .map_err(|e| ErrorInternalServerError(format!("Failed to delete user: {}", e)))?;
+        .map_err(|_e| CustomError::DeletionError)?;
 
 
     if delete_result.rows_affected > 0  && delete_user.rows_affected > 0 {
@@ -383,49 +382,47 @@ pub async fn delete_shelter(
     } else {
         warn!("Shelter with ID {} was not deleted (0 rows affected)", shelter_id);
         warn!("User with ID {} was not deleted (0 rows affected)", user_id);
-        Err(ErrorInternalServerError(
-            "Failed to delete either shelter or user (0 rows affected)",
-        ))
+        Err(CustomError::InternalError)
     }
 }
 
 pub async fn get_resident_details(
     db: web::Data<DbConn>,
     path: web::Path<i32>
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
     let animal_id = path.into_inner();
     let repo = AnimalRepository::new(db.get_ref());
 
     let animal = repo
         .find_by_id(animal_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve animal: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     match animal {
         Some(animal) => Ok(HttpResponse::Ok().json(animal)),
-        None => Err(ErrorNotFound(format!("Animal with ID {} not found", animal_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
-pub async fn get_request_details(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+pub async fn get_request_details(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
     let request_id = path.into_inner();
     let repo = DemandeRepository::new(db.get_ref());
 
     let request = repo
         .find_by_id(request_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve request: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     match request {
         Some(request) => Ok(HttpResponse::Ok().json(request)),
-        None => Err(ErrorNotFound(format!("Request with ID {} not found", request_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
 pub async fn accept_request(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
 
     let request_id = path.into_inner();
 
@@ -436,7 +433,7 @@ pub async fn accept_request(
     let request_data = repo
         .find_by_id(request_id)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?;
+        .map_err(|_e| CustomError::InternalError)?;
 
     match request_data {
         Some(request_data) => {
@@ -447,19 +444,19 @@ pub async fn accept_request(
             let updated_request = repo
                 .update(request_active_model)
                 .await
-                .map_err(|e| ErrorInternalServerError(format!("Failed to update request: {}", e)))?;
+                .map_err(|_e| CustomError::UpdateError)?;
 
             info!("Accepted request with ID {}", request_id);
             Ok(HttpResponse::Ok().json(updated_request))
         }
-        None => Err(ErrorNotFound(format!("Request with ID {} not found", request_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
 pub async fn deny_request(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse, CustomError> {
 
     let request_id = path.into_inner();
 
@@ -470,7 +467,7 @@ pub async fn deny_request(
     let request_data = repo
         .find_by_id(request_id)
         .await
-        .map_err(|e| ErrorInternalServerError(e))?;
+        .map_err(|_e| CustomError::InternalError)?;
 
     match request_data {
         Some(request_data) => {
@@ -481,12 +478,12 @@ pub async fn deny_request(
             let updated_request = repo
                 .update(request_active_model)
                 .await
-                .map_err(|e| ErrorInternalServerError(format!("Failed to deny request: {}", e)))?;
+                .map_err(|_e| CustomError::UpdateError)?;
 
             info!("Denied request with ID {}", request_id);
             Ok(HttpResponse::Ok().json(updated_request))
         }
-        None => Err(ErrorNotFound(format!("Request with ID {} not found", request_id))),
+        None => Err(CustomError::NotFound),
     }
 }
 
@@ -502,7 +499,7 @@ pub async fn get_fostered(
     let fostered = repo
         .find_fostered(shelter_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve animals: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(fostered))
 }
@@ -519,7 +516,7 @@ pub async fn get_requested(
     let requested = repo
         .find_requested(shelter_id)
         .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve requests: {}", e)))?;
+        .map_err(|_e| CustomError::NotFound)?;
 
     Ok(HttpResponse::Ok().json(requested))
 }
