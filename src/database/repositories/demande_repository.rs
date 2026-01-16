@@ -17,14 +17,12 @@ impl<'a> DemandeRepository<'a> {
         DemandeEntity::find().all(self.db).await
     }
 
-    pub async fn find_current_requests(&self) -> Result<Vec<DemandeModelEx>, DbErr> {
-        //TODO REMOVE HARDCODED */
-        let foster_id = 1;
+    pub async fn find_current_requests(&self, id: i32) -> Result<Vec<DemandeModelEx>, DbErr> {
 
         let requests = DemandeEntity::load()
             .with(FamilleEntity)
             .with((AnimalEntity, AssociationEntity))
-            .filter(sea_orm::ColumnTrait::eq(&demande::Column::FamilleId, foster_id))
+            .filter(sea_orm::ColumnTrait::eq(&demande::Column::FamilleId,id))
             .all(self.db)
             .await?;
 

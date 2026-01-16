@@ -1,32 +1,33 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
-use actix_web::{Error, HttpResponse, web};
+use actix_web::{/* Error,  */HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
-use serde::{Deserialize, Serialize};
-use validator::Validate;
+/* use serde::{Deserialize, Serialize};
+use validator::Validate; */
 
 use crate::auth::CustomError;
 /* use crate::auth::hash_password; */
-use crate::database::models::{/* UtilisateurActiveModel, */ UtilisateurActiveModelEx};
+/* use crate::database::models::{ UtilisateurActiveModel, UtilisateurActiveModelEx}; */
 use crate::database::repositories::UtilisateurRepository;
-use crate::validators::common_validators::{process_json_validation};
+/* use crate::validators::common_validators::{process_json_validation};
 
-use sea_orm::ActiveValue::Set;
+use sea_orm::ActiveValue::Set; */
 
 /* pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("").post(create_user)
         );
 } */
 
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("")
-            .get(get_users)
-        )
-        .service(web::resource("/{id}")
-            .get(get_user)
-            .put(update_user)
+pub fn configure_protected(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("/{id}")
+            /* .get(get_user)
+            .put(update_user) */
             .delete(delete_user)
-        );
+        )
+        /* .service(web::resource("")
+            .get(get_users)
+        ) */
+       ;
 }
 
 /* #[derive(Deserialize, Serialize, Validate)]
@@ -44,8 +45,8 @@ pub struct UserCreate {
     pub confirmation: String,
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
-} */
-
+}
+ 
 #[derive(Deserialize, Serialize, Validate)]
 pub struct UserUpdate {
     #[validate(length(
@@ -84,7 +85,7 @@ pub async fn get_user(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<Htt
     }
 }
 
-/* pub async fn create_user(
+pub async fn create_user(
     db: web::Data<DbConn>,
     json_user: web::Json<UserCreate>,
 ) -> Result<HttpResponse, Error> {
@@ -124,8 +125,8 @@ pub async fn get_user(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<Htt
 
     info!("User created with ID: {}", created_user.id);
     Ok(HttpResponse::Created().json(created_user))
-} */
-
+}
+ 
 pub async fn update_user(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
@@ -180,7 +181,7 @@ pub async fn update_user(
         }
         None => Err(CustomError::NotFound),
     }
-}
+} */
 
 pub async fn delete_user(
     db: web::Data<DbConn>,

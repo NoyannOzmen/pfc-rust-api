@@ -1,5 +1,6 @@
+use crate::database::models::association::{self};
 use crate::database::models::{AnimalEntity, AssociationActiveModel, AssociationActiveModelEx, AssociationEntity, AssociationModel, AssociationModelEx, EspeceEntity, MediaEntity};
-use sea_orm::{DeleteResult, EntityLoaderTrait};
+use sea_orm::{DeleteResult, EntityLoaderTrait, QueryFilter};
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait,
 };
@@ -33,6 +34,16 @@ impl<'a> AssociationRepository<'a> {
             .await?;
 
         Ok(shelter)
+    }
+
+    pub async fn find_by_user_id(&self, id: i32) -> Result<Option<AssociationModelEx>, DbErr> {
+        let foster = AssociationEntity::load()
+            .with(AnimalEntity)
+            .filter(association::COLUMN.utilisateur_id.eq(id))
+            .one(self.db)
+            .await?;
+
+        Ok(foster)
     }
 
     pub async fn create(&self, model: AssociationActiveModel) -> Result<AssociationModel, DbErr> {

@@ -22,6 +22,9 @@ pub struct Claims {
     pub jti: String,
     pub user_id: i32,
     pub email: String,
+    pub role: String,
+    /* pub foster_id: Option<i32>,
+    pub shelter_id: Option<i32>, */
 }
 
 pub static JWT_SECRET: Lazy<String> = Lazy::new(|| {
@@ -41,6 +44,14 @@ pub fn generate_claims(user: &UtilisateurModelEx) -> Claims {
     let iat = Utc::now().timestamp() as usize;
     let jti = generate_uuid();
 
+    let mut role: String = format!(""); 
+    if !user.refuge.is_none() {
+        role = format!("SHELTER");
+    };
+    if !user.accueillant.is_none() {
+        role = format!("FOSTER");
+    };
+
     Claims {
         sub: user.id.to_string(),
         exp: expiration,
@@ -48,6 +59,9 @@ pub fn generate_claims(user: &UtilisateurModelEx) -> Claims {
         jti,
         user_id: user.id,
         email: user.email.clone(),
+        role: role,
+        /* foster_id: Some(user.accueillant.clone().unwrap().id),
+        shelter_id: Some(user.refuge.clone().unwrap().id), */
     }
 }
 
@@ -73,3 +87,51 @@ pub fn decode_jwt(token: &str) -> Result<User, String> {
     Err(e) => Err(e.to_string()),
   }
 }
+
+pub fn extract_user_id_from_token(token: &str) -> Option<i32> {
+    let validation = Validation::default();
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &validation,
+    ) {
+        Ok(token_data) => Some(token_data.claims.user_id),
+        Err(e) => {
+            log::error!("Failed to decode token: {:?}", e);
+            None
+        }
+    }
+}
+
+/* pub fn extract_shelter_id_from_token(token: &str) -> Option<i32> {
+    let validation = Validation::default();
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &validation,
+    ) {
+        Ok(token_data) => token_data.claims.shelter_id,
+        Err(e) => {
+            log::error!("Failed to decode token: {:?}", e);
+            None
+        }
+    }
+}
+
+pub fn extract_foster_id_from_token(token: &str) -> Option<i32> {
+    let validation = Validation::default();
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &validation,
+    ) {
+        Ok(token_data) => token_data.claims.foster_id,
+        Err(e) => {
+            log::error!("Failed to decode token: {:?}", e);
+            None
+        }
+    }
+} */

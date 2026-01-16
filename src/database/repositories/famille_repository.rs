@@ -1,5 +1,6 @@
+use crate::database::models::famille::{self};
 use crate::database::models::{AnimalEntity, FamilleActiveModel, FamilleActiveModelEx, FamilleEntity, FamilleModel, FamilleModelEx};
-use sea_orm::{DeleteResult, EntityLoaderTrait};
+use sea_orm::{DeleteResult, EntityLoaderTrait, QueryFilter};
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait,
 };
@@ -21,6 +22,16 @@ impl<'a> FamilleRepository<'a> {
         let foster = FamilleEntity::load()
             .with(AnimalEntity)
             .filter_by_id(id)
+            .one(self.db)
+            .await?;
+
+        Ok(foster)
+    }
+
+    pub async fn find_by_user_id(&self, id: i32) -> Result<Option<FamilleModelEx>, DbErr> {
+        let foster = FamilleEntity::load()
+            .with(AnimalEntity)
+            .filter(famille::COLUMN.utilisateur_id.eq(id))
             .one(self.db)
             .await?;
 

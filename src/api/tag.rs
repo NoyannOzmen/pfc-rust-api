@@ -1,6 +1,6 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
-use log::{info, warn};
+use log::{info, /* warn */};
 use sea_orm::DbConn;
 use validator::Validate;
 
@@ -13,17 +13,23 @@ use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
 
-pub fn configure(cfg: &mut web::ServiceConfig) {
+pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_tags)
         )
-        .service(web::resource("/create")
+        /* .service(web::resource("/create")
             .post(create_tag)
-        )
+        ) */
         .service(web::resource("/{id}")
             .get(get_tag)
-            .put(update_tag)
-            .delete(delete_tag)
+            /* .put(update_tag)
+            .delete(delete_tag) */
+        );
+}
+
+pub fn configure_protected(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
+            .post(create_tag)
         );
 }
 
@@ -43,7 +49,7 @@ pub struct TagCreate {
     pub description: String,
 }
 
-#[derive(Deserialize, Serialize, Validate)]
+/* #[derive(Deserialize, Serialize, Validate)]
 pub struct TagUpdate {
     #[validate(length(
         min = 3,
@@ -57,7 +63,7 @@ pub struct TagUpdate {
         message = "Please describe this tag using between 3 and 50 characters"
     ))]
     pub description: Option<String>,
-}
+} */
 
 pub async fn get_tags(db: web::Data<DbConn>) -> Result<HttpResponse, CustomError> {
     let repo = TagRepository::new(db.get_ref());
@@ -114,7 +120,7 @@ pub async fn create_tag(
     info!("Tag created with ID: {}", created_tag.id);
     Ok(HttpResponse::Created().json(created_tag))
 }
-
+/* 
 pub async fn update_tag(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
@@ -187,4 +193,4 @@ pub async fn delete_tag(
         warn!("Tag with ID {} was not deleted (0 rows affected)", tag_id);
         Err(CustomError::DeletionError)
     }
-}
+} */

@@ -9,11 +9,13 @@ edition = "2024"
 actix-web = "4"
 actix-files = "0.6.9"
 actix-cors = "0.7.1"
+actix-service = "2.0.3"
 bcrypt = "0.17"
 chrono = { version = "0.4.40", features = ["serde"] }
 derive_more = "2.1.1"
 dotenv = "0.15.0"
 env_logger = "0.11.7"
+futures = "0.3.31"
 jsonwebtoken = { version = "10", features = ["aws_lc_rs"] }
 log = "0.4.27"
 once_cell = "1.21.1"

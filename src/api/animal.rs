@@ -1,5 +1,5 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound,  ErrorUnprocessableEntity }; */
-use actix_web::{Error, HttpResponse, web};
+use actix_web::{Error, HttpMessage as _, HttpRequest, HttpResponse, web};
 use chrono::{Duration, Local};
 use log::{info, /* warn */};
 use sea_orm::{DbConn};
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::CustomError;
 use crate::database::models::{AnimalActiveModel, AnimalTagActiveModel, DemandeActiveModel};
 use crate::database::models::sea_orm_active_enums::{Sexe, Statut, StatutDemande};
-use crate::database::repositories::{AnimalRepository, AnimalTagRepository, DemandeRepository};
+use crate::database::repositories::{AnimalRepository, AnimalTagRepository, AssociationRepository, DemandeRepository, FamilleRepository, UtilisateurRepository};
 use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
@@ -20,19 +20,28 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
             .get(get_animals)
             /* .post(create_animal) */
         )
-        .service(web::resource("/nouveau-profil")
-            .post(create_animal)
-        )
         .service(web::resource("/{id}")
             .get(get_animal)
             /* .put(update_animal)
             .delete(delete_animal) */
-        )
-        .service(web::resource("/{id}/requests")
+        );
+}
+
+pub fn configure_protected_req(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
             .get(get_requests)
-        )
-        .service(web::resource("/{id}/faire-une-demande")
+        );
+}
+
+pub fn configure_protected_foster(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
             .post(request_animal)
+        );
+}
+
+pub fn configure_create(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
+            .post(create_animal)
         );
 }
 
@@ -162,12 +171,34 @@ pub async fn get_requests(
 
 pub async fn request_animal(
     db: web::Data<DbConn>,
-    path: web::Path<i32>
+    path: web::Path<i32>,
+    req: HttpRequest,
 ) -> Result<HttpResponse, CustomError> {
     let animal_id = path.into_inner();
 
-    //TODO REMOVE HARDCODED */
-    let foster_id = 1;
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
+    
+    let user_repo = UtilisateurRepository::new(db.get_ref());
+
+    let user = user_repo
+        .find_by_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if user.is_none() {
+        return Err(CustomError::NotFound);
+    }
+
+    let repo = FamilleRepository::new(db.get_ref());
+
+    let foster = repo
+        .find_by_user_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if foster.is_none() {
+        return Err(CustomError::NotFound);
+    }
+
+    let foster_id = foster.as_ref().unwrap().id;
 
     info!(
         "Attempting to create request for animal with ID: {}",
@@ -219,11 +250,36 @@ pub async fn request_animal(
 pub async fn create_animal(
     db: web::Data<DbConn>,
     json_animal: web::Json<AnimalCreate>,
-) -> Result<HttpResponse, Error> {
+    req: HttpRequest,
+) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_animal)?;
 
-    //TODO REMOVE HARDCODED */
-    let shelter_id = 1;
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
+
+    let user_repo = UtilisateurRepository::new(db.get_ref());
+
+    let user = user_repo
+        .find_by_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if user.is_none() {
+        return Err(CustomError::NotFound);
+    }
+
+    let repo = AssociationRepository::new(db.get_ref());
+
+    let shelter = repo
+        .find_by_user_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if shelter.is_none() {
+        return Err(CustomError::NotFound);
+    }
+    if !shelter.as_ref().unwrap().pensionnaires.is_empty() {
+        return Err(CustomError::ShelteredError);
+    }
+
+    let shelter_id = shelter.as_ref().unwrap().id;
 
     info!(
         "Attempting to create animal with name: {}",

@@ -1,5 +1,5 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
-use actix_web::{HttpResponse, web};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
 use validator::Validate;
@@ -19,7 +19,7 @@ pub fn configure_register(cfg: &mut web::ServiceConfig) {
         );
 }
 
-pub fn configure(cfg: &mut web::ServiceConfig) {
+pub fn configure_protected(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             /* .get(get_fosters) */
             .post(update_foster)
@@ -152,6 +152,7 @@ pub struct FosterUpdate {
 }
 */
 pub async fn get_foster(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
+
     let foster_id = path.into_inner();
     let repo = FamilleRepository::new(db.get_ref());
 
@@ -232,21 +233,27 @@ pub async fn create_foster(
 pub async fn update_foster(
     db: web::Data<DbConn>,
     /* path: web::Path<i32>, */
+    req: HttpRequest,
     json_foster: web::Json<FosterUpdate>,
 ) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_foster)?;
 
-    //TODO REMOVE HARDCODED */
-    let foster_id = 1;
-    /* let foster_id = path.into_inner(); */
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
+    
+    let user_repo = UtilisateurRepository::new(db.get_ref());
 
-    info!("Attempting to update Foster with ID: {}", foster_id);
+    let user = user_repo
+        .find_by_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if user.is_none() {
+        return Err(CustomError::NotFound);
+    }
 
     let repo = FamilleRepository::new(db.get_ref());
 
-
     let foster_data = repo
-        .find_by_id(foster_id)
+        .find_by_user_id(user_id)
         .await
         .map_err(|_e| CustomError::InternalError)?;
 
@@ -289,7 +296,7 @@ pub async fn update_foster(
                 .await
                 .map_err(|_e| CustomError::UpdateError)?;
 
-            info!("Foster with ID {} updated", foster_id);
+            info!("Foster succesfully updated");
             Ok(HttpResponse::Ok().json(updated_foster))
         }
         None => Err(CustomError::NotFound),
@@ -298,31 +305,12 @@ pub async fn update_foster(
 
 pub async fn delete_foster(
     db: web::Data<DbConn>,
+    req: HttpRequest,
     /* path: web::Path<i32>, */
 ) -> Result<HttpResponse, CustomError> {
 
-    //TODO REMOVE HARDCODED */
-    let foster_id = 1;
-    /* let foster_id = path.into_inner(); */
-
-    let repo = FamilleRepository::new(db.get_ref());
-
-    info!("Attempting to delete foster with ID: {}", foster_id);
-
-    let foster = repo
-        .find_by_id(foster_id)
-        .await
-        .map_err(|_e| CustomError::InternalError)?;
-    if foster.is_none() {
-        return Err(CustomError::NotFound);
-    }
-    if !foster.unwrap().animals.is_empty() {
-        return Err(CustomError::FosteredError);
-    }
-
-    //TODO REMOVE HARDCODED */
-    let user_id = 2;
-
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
+    
     let user_repo = UtilisateurRepository::new(db.get_ref());
 
     let user = user_repo
@@ -332,6 +320,22 @@ pub async fn delete_foster(
     if user.is_none() {
         return Err(CustomError::NotFound);
     }
+
+    let repo = FamilleRepository::new(db.get_ref());
+
+    let foster = repo
+        .find_by_user_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if foster.is_none() {
+        return Err(CustomError::NotFound);
+    }
+    if !foster.as_ref().unwrap().animals.is_empty() {
+        return Err(CustomError::FosteredError);
+    }
+
+    let foster_id = foster.as_ref().unwrap().id;
+    info!("Attempting to delete foster with ID: {}", foster_id);
 
     let delete_result = repo
         .delete(foster_id)

@@ -1,5 +1,5 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
-use actix_web::{Error, HttpResponse, web};
+use actix_web::{Error, HttpMessage as _, HttpRequest, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
 use validator::Validate;
@@ -26,11 +26,17 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         )
         .service(web::resource("/{id}")
             .get(get_shelter)
-        )
-        .service(web::resource("/{id}/fostered")
+        );
+}
+
+pub fn configure_protected_fostered(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
             .get(get_fostered)
-        )
-        .service(web::resource("/{id}/requested")
+        );
+}
+
+pub fn configure_protected_requested(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
             .get(get_requested)
         );
 }
@@ -330,29 +336,11 @@ pub async fn update_shelter(
 
 pub async fn delete_shelter(
     db: web::Data<DbConn>,
+    req: HttpRequest,
     /* path: web::Path<i32>, */
 ) -> Result<HttpResponse, CustomError> {
 
-    //TODO REMOVE HARDCODED */
-    /* let shelter_id = path.into_inner(); */
-    let shelter_id = 5;
-    let repo = AssociationRepository::new(db.get_ref());
-
-    info!("Attempting to delete shelter with ID: {}", shelter_id);
-
-    let shelter = repo
-        .find_by_id(shelter_id)
-        .await
-        .map_err(|_e| CustomError::InternalError)?;
-    if shelter.is_none() {
-        return Err(CustomError::NotFound);
-    }
-    if !shelter.unwrap().pensionnaires.is_empty() {
-        return Err(CustomError::ShelteredError);
-    }
-
-    //TODO REMOVE HARDCODED */
-    let user_id = 10;
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
 
     let user_repo = UtilisateurRepository::new(db.get_ref());
 
@@ -363,6 +351,22 @@ pub async fn delete_shelter(
     if user.is_none() {
         return Err(CustomError::NotFound);
     }
+
+    let repo = AssociationRepository::new(db.get_ref());
+
+    let shelter = repo
+        .find_by_user_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if shelter.is_none() {
+        return Err(CustomError::NotFound);
+    }
+    if !shelter.as_ref().unwrap().pensionnaires.is_empty() {
+        return Err(CustomError::ShelteredError);
+    }
+
+    let shelter_id = shelter.as_ref().unwrap().id;
+    info!("Attempting to delete shelter with ID: {}", shelter_id);
 
     let delete_result = repo
         .delete(shelter_id)

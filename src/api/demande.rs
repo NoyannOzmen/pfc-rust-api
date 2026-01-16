@@ -1,5 +1,5 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity }; */
-use actix_web::{Error, HttpResponse, web};
+use actix_web::{Error, HttpMessage as _, HttpRequest, HttpResponse, web};
 use log::{info, /* warn */};
 use sea_orm::DbConn;
 
@@ -9,11 +9,11 @@ use serde::{Deserialize, Serialize};
 use crate::auth::CustomError;
 use crate::database::models::DemandeActiveModel;
 use crate::database::models::sea_orm_active_enums::StatutDemande;
-use crate::database::repositories::DemandeRepository;
+use crate::database::repositories::{DemandeRepository, FamilleRepository};
 
 use sea_orm::ActiveValue::Set;
 
-pub fn configure_public(cfg: &mut web::ServiceConfig) {
+pub fn configure_protected(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_current_requests)
             .post(create_request)
@@ -56,11 +56,26 @@ pub struct DemandeCreate {
     Ok(HttpResponse::Ok().json(requests))
 }
  */
-pub async fn get_current_requests(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
+pub async fn get_current_requests(db: web::Data<DbConn>, req: HttpRequest) -> Result<HttpResponse, CustomError> {
+
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
+
+    let repo = FamilleRepository::new(db.get_ref());
+
+    let foster = repo
+        .find_by_user_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if foster.is_none() {
+        return Err(CustomError::NotFound);
+    }
+
+    let foster_id = foster.as_ref().unwrap().id;
+
     let repo = DemandeRepository::new(db.get_ref());
 
     let requests = repo
-        .find_current_requests()
+        .find_current_requests(foster_id)
         .await
         .map_err(|_e| CustomError::NotFound)?;
 
