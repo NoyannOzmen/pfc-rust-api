@@ -1,7 +1,7 @@
 /* use actix_web::error::ErrorInternalServerError;
 use actix_web::{Error}; */
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, TokenData, Validation, decode, encode};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -23,8 +23,6 @@ pub struct Claims {
     pub user_id: i32,
     pub email: String,
     pub role: String,
-    /* pub foster_id: Option<i32>,
-    pub shelter_id: Option<i32>, */
 }
 
 pub static JWT_SECRET: Lazy<String> = Lazy::new(|| {
@@ -60,8 +58,6 @@ pub fn generate_claims(user: &UtilisateurModelEx) -> Claims {
         user_id: user.id,
         email: user.email.clone(),
         role: role,
-        /* foster_id: Some(user.accueillant.clone().unwrap().id),
-        shelter_id: Some(user.refuge.clone().unwrap().id), */
     }
 }
 
@@ -74,18 +70,17 @@ pub fn generate_token_from_claims(claims: &Claims) -> Result<String, CustomError
     .map_err(|_e| {log::error!("Error generating token: {}", _e); CustomError::InternalError})
 }
 
-pub fn decode_jwt(token: &str) -> Result<User, String> {
-  let token_data = decode::<User>(
+pub fn decode_jwt(token: &str) -> Result<TokenData<Claims>, CustomError> {
+  let token_data = decode::<Claims>(
     token,
     &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
     &Validation::default(),
-  );
+  ).map_err(|_e| {
+        log::error!("JWT validation error: {}", _e);
+        CustomError::BadClientData
+    })?;
 
-  match token_data {
-    Ok(token_data) => Ok(token_data.claims),
-
-    Err(e) => Err(e.to_string()),
-  }
+  Ok(token_data)
 }
 
 pub fn extract_user_id_from_token(token: &str) -> Option<i32> {
@@ -103,35 +98,3 @@ pub fn extract_user_id_from_token(token: &str) -> Option<i32> {
         }
     }
 }
-
-/* pub fn extract_shelter_id_from_token(token: &str) -> Option<i32> {
-    let validation = Validation::default();
-
-    match decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-        &validation,
-    ) {
-        Ok(token_data) => token_data.claims.shelter_id,
-        Err(e) => {
-            log::error!("Failed to decode token: {:?}", e);
-            None
-        }
-    }
-}
-
-pub fn extract_foster_id_from_token(token: &str) -> Option<i32> {
-    let validation = Validation::default();
-
-    match decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-        &validation,
-    ) {
-        Ok(token_data) => token_data.claims.foster_id,
-        Err(e) => {
-            log::error!("Failed to decode token: {:?}", e);
-            None
-        }
-    }
-} */

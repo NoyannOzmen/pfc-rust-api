@@ -4,14 +4,12 @@ use actix_web::error::ErrorUnauthorized;
 use actix_web::{Error, HttpMessage};
 use futures::future::{Ready, ready};
 use jsonwebtoken::{DecodingKey, Validation, decode};
-/* use log::{info, warn}; */
 use sea_orm::DbConn;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-/* use crate::auth::{extract_foster_id_from_token, extract_shelter_id_from_token}; */
 use crate::auth::jwt::{Claims, JWT_SECRET, decode_jwt};
 
 pub struct AuthMiddleware {
@@ -91,10 +89,8 @@ where
             match decode_jwt(&token) {
                 Ok(token_data) => {
                     let user_id = extract_user_id_from_token(&token).unwrap();
-                    /* let shelter_id = extract_shelter_id_from_token(&token).unwrap();
-                    req.extensions_mut().insert(shelter_id);
-                    let foster_id =extract_foster_id_from_token(&token).unwrap();
-                    req.extensions_mut().insert(foster_id); */
+                    let claims = extract_claims_from_token(&token).unwrap();
+                    req.extensions_mut().insert(claims);
                     req.extensions_mut().insert(user_id);
                     req.extensions_mut().insert(token_data);
                     service.call(req).await
@@ -117,6 +113,22 @@ fn extract_user_id_from_token(token: &str) -> Option<i32> {
         &validation,
     ) {
         Ok(token_data) => Some(token_data.claims.user_id),
+        Err(e) => {
+            log::error!("Failed to decode token: {:?}", e);
+            None
+        }
+    }
+}
+
+fn extract_claims_from_token(token: &str) -> Option<Claims> {
+    let validation = Validation::default();
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &validation,
+    ) {
+        Ok(token_data) => Some(token_data.claims),
         Err(e) => {
             log::error!("Failed to decode token: {:?}", e);
             None

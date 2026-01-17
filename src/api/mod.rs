@@ -2,7 +2,7 @@ use actix_web::web::ServiceConfig;
 use actix_web::{HttpResponse, web};
 use sea_orm::DbConn;
 
-use crate::middleware::AuthMiddleware;
+use crate::middleware::{AuthMiddleware, RoleGuard};
 
 pub mod auth;
 mod animal;
@@ -16,8 +16,8 @@ mod utilisateur;
 
 async fn hello() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({
-        "status": "UP",
-        "message": "Hello World !"
+        "status": "UP AND RUNNING",
+        "message": "Hello World ! Welcome to the PetFosterConnect API !"
     }))
 }
 
@@ -32,22 +32,25 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
         )
         .service(
             web::scope("/animaux/nouveau-profil")
+            .wrap(RoleGuard::shelter())
             .wrap(AuthMiddleware::new(db.clone()))
             .configure(|c| animal::configure_protected_creation(c))
         )
         .service(
             web::scope("/animaux")
             .configure(|c| animal::configure_public(c))
-        )
-        .service(
-            web::scope("animaux/{id}/requests")
-            .wrap(AuthMiddleware::new(db.clone()))
-            .configure(|c| animal::configure_protected_req(c))
-        )
-        .service(
-            web::scope("animaux/{id}/faire-une-demande")
-            .wrap(AuthMiddleware::new(db.clone()))
-            .configure(|c| animal::configure_protected_foster(c))
+            .service(
+            web::scope("/{id}/requests")
+                .wrap(RoleGuard::shelter())
+                .wrap(AuthMiddleware::new(db.clone()))
+                .configure(|c| animal::configure_protected_req(c))
+            )
+            .service(
+            web::scope("/{id}/faire-une-demande")
+                .wrap(RoleGuard::foster())
+                .wrap(AuthMiddleware::new(db.clone()))
+                .configure(|c| animal::configure_protected_foster(c))
+            )
         )
         .service(
             web::scope("/associations/inscription")
@@ -55,6 +58,7 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
         )
         .service(
             web::scope("/associations/profil")
+            .wrap(RoleGuard::shelter())
             .wrap(AuthMiddleware::new(db.clone()))
             .configure(|c| association::configure(c))
         )
@@ -63,17 +67,20 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
             .configure(|c| association::configure_public(c))
             .service(
                 web::scope("/{id}/fostered")
+                .wrap(RoleGuard::shelter())
                 .wrap(AuthMiddleware::new(db.clone()))
                 .configure(|c| association::configure_protected_fostered(c))
             )
             .service(
                 web::scope("/{id}/requested")
+                .wrap(RoleGuard::shelter())
                 .wrap(AuthMiddleware::new(db.clone()))
                 .configure(|c| association::configure_protected_requested(c))
             )
         )
         .service(
             web::scope("/demandes")
+            .wrap(RoleGuard::shelter())
             .wrap(AuthMiddleware::new(db.clone()))
             .configure(|c| demande::configure_protected(c))
         )
@@ -87,6 +94,7 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
         )       
         .service(
             web::scope("/famille/profil")
+            .wrap(RoleGuard::foster())
             .wrap(AuthMiddleware::new(db.clone()))
             .configure(|c| famille::configure_protected(c))
         )
@@ -99,6 +107,7 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
             .configure(|c| media::configure_protected(c))
         )
         .service(web::scope("/tags/create")
+        .wrap(RoleGuard::shelter())
             .wrap(AuthMiddleware::new(db.clone()))
             .configure(|c| tag::configure_protected(c))
         )
