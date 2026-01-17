@@ -30,23 +30,24 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
             web::scope("/connexion")
             .configure(|c| auth::configure(c))
         )
-        .service(web::scope("/animaux/nouveau-profil")
+        .service(
+            web::scope("/animaux/nouveau-profil")
             .wrap(AuthMiddleware::new(db.clone()))
-            .configure(|c| animal::configure_create(c))
+            .configure(|c| animal::configure_protected_creation(c))
         )
         .service(
             web::scope("/animaux")
             .configure(|c| animal::configure_public(c))
-            .service(
-                web::scope("/{id}/requests")
-                .wrap(AuthMiddleware::new(db.clone()))
-                .configure(|c| animal::configure_protected_req(c))
-            )
-            .service(
-                web::scope("/{id}/faire-une-demande")
-                .wrap(AuthMiddleware::new(db.clone()))
-                .configure(|c| animal::configure_protected_foster(c))
-            )
+        )
+        .service(
+            web::scope("animaux/{id}/requests")
+            .wrap(AuthMiddleware::new(db.clone()))
+            .configure(|c| animal::configure_protected_req(c))
+        )
+        .service(
+            web::scope("animaux/{id}/faire-une-demande")
+            .wrap(AuthMiddleware::new(db.clone()))
+            .configure(|c| animal::configure_protected_foster(c))
         )
         .service(
             web::scope("/associations/inscription")
@@ -92,6 +93,10 @@ pub fn configure_routes(cfg: &mut ServiceConfig, db: DbConn) {
         .service(
             web::scope("/media")
             .configure(|c| media::configure_public(c))
+        )
+        .service(
+            web::scope("/upload")
+            .configure(|c| media::configure_protected(c))
         )
         .service(web::scope("/tags/create")
             .wrap(AuthMiddleware::new(db.clone()))

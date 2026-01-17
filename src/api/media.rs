@@ -1,20 +1,27 @@
+use actix_multipart::form::text::Text;
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpResponse, web};
-use log::{info, /* warn */};
+use actix_web::{Responder};
+use actix_multipart::{
+    form::{
+        MultipartForm,
+        tempfile::{TempFile},
+    },
+};
+use log::{info, warn};
 use sea_orm::DbConn;
-
-use serde::{Deserialize, Serialize};
+/* use serde::{Deserialize, Serialize}; */
 
 use crate::auth::CustomError;
 use crate::database::models::MediaActiveModel;
-use crate::database::repositories::MediaRepository;
+use crate::database::repositories::{MediaRepository};
 
 use sea_orm::ActiveValue::Set;
 
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .get(get_medias)
-            .post(create_media)
+            /* .post(create_media) */
         )
         /* .service(web::resource("/{id}")
             .get(get_media)
@@ -24,14 +31,24 @@ pub fn configure_public(cfg: &mut web::ServiceConfig) {
         ;
 }
 
-#[derive(Deserialize, Serialize)]
+pub fn configure_protected(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("/logo")
+            .post(upload_logo)
+        )
+        .service(web::resource("/photo")
+            .post(upload_photo)
+        );
+}
+
+/* #[derive(Deserialize, Serialize)]
 pub struct MediaCreate {
     pub url: String,
     pub ordre: i32,
     pub animal_id: Option<i32>,
     pub association_id: Option<i32>,
 }
-/* #[derive(Deserialize, Serialize)]
+
+#[derive(Deserialize, Serialize)]
 pub struct MediaUpdate {
     pub url: Option<String>,
     pub ordre: Option<i32>,
@@ -49,6 +66,83 @@ pub async fn get_medias(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
 
     Ok(HttpResponse::Ok().json(medias))
 }
+
+#[derive(Debug, MultipartForm)]
+pub struct LogoUploadForm {
+    #[multipart(limit = "5MB")]
+    file: TempFile,
+    assoId: Option<Text<i32>> // camelCase to sync with Angular
+}
+
+pub async fn upload_logo(
+    db: web::Data<DbConn>,
+    MultipartForm(form): MultipartForm<LogoUploadForm>,
+) -> Result<HttpResponse, CustomError> {
+
+    let file_path = format!("/images/animaux/{}", form.file.file_name.unwrap());
+    warn!("Saving picture to ./static{}", file_path);
+    form.file.file.persist(format!("./static{}", file_path)).unwrap();
+    warn!("Logo uploaded successfully");
+    
+    let repo = MediaRepository::new(db.get_ref());
+
+    let shelter_id  = form.assoId.unwrap().to_string();
+    let id = shelter_id.parse::<i32>().unwrap();
+
+    let media_model = MediaActiveModel {
+        url: Set(file_path),
+        ordre: Set(1),
+        association_id: Set(Some(id)),
+        ..Default::default()
+    };
+
+    let created_media = repo
+        .create(media_model)
+        .await
+        .map_err(|_e| CustomError::CreationError)?;
+
+    info!("Logo uploaded with ID: {}", created_media.id);
+    Ok(HttpResponse::Created().json(created_media))
+}
+
+#[derive(Debug, MultipartForm)]
+pub struct PhotoUploadForm {
+    #[multipart(limit = "5MB")]
+    file: TempFile,
+    animalId: Option<Text<i32>> // camelCase to sync with Angular
+}
+
+async fn upload_photo(
+    db: web::Data<DbConn>,
+    MultipartForm(form): MultipartForm<PhotoUploadForm>,
+) -> Result<impl Responder, Error> {
+
+    let file_path = format!("/images/animaux/{}", form.file.file_name.unwrap());
+    warn!("Saving picture to ./static{}", file_path);
+    form.file.file.persist(format!("./static{}", file_path)).unwrap();
+    warn!("Logo uploaded successfully");
+
+    let repo = MediaRepository::new(db.get_ref());
+
+    let animal_id  = form.animalId.unwrap().to_string();
+    let id = animal_id.parse::<i32>().unwrap();
+
+    let media_model = MediaActiveModel {
+        url: Set(file_path),
+        ordre: Set(1),
+        animal_id: Set(Some(id)),
+        ..Default::default()
+    };
+
+    let created_media = repo
+        .create(media_model)
+        .await
+        .map_err(|_e| CustomError::CreationError)?;
+
+    info!("Logo uploaded with ID: {}", created_media.id);
+    Ok(HttpResponse::Created().json(created_media))
+}
+
 /* pub async fn get_media(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
     let media_id = path.into_inner();
     let repo = MediaRepository::new(db.get_ref());
@@ -63,7 +157,7 @@ pub async fn get_medias(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
         None => Err(ErrorNotFound(format!("Media with ID {} not found", media_id))),
     }
 }
- */
+
 pub async fn create_media(
     db: web::Data<DbConn>,
     json_media: web::Json<MediaCreate>,
@@ -94,7 +188,8 @@ pub async fn create_media(
     info!("Media created with ID: {}", created_media.id);
     Ok(HttpResponse::Created().json(created_media))
 }
-/* pub async fn update_media(
+
+pub async fn update_media(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
     json_media: web::Json<MediaUpdate>,

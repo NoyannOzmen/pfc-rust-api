@@ -174,7 +174,7 @@ pub struct AssociationUpdate {
         message = "Please describe your shelter using between 3 and 200 characters"
     ))]
     pub description: Option<Option<String>>,
-    pub utilisateur_id: Option<i32>,
+    /* pub utilisateur_id: Option<i32>, */
 }
 
 pub async fn get_shelters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
@@ -269,19 +269,29 @@ pub async fn create_shelter(
 
 pub async fn update_shelter(
     db: web::Data<DbConn>,
-    path: web::Path<i32>,
+    /* path: web::Path<i32>, */
+    req: HttpRequest,
     json_shelter: web::Json<AssociationUpdate>,
 ) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_shelter)?;
 
-    let shelter_id = path.into_inner();
+    /* let shelter_id = path.into_inner(); */
+    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
 
-    info!("Attempting to update shelter with ID: {}", shelter_id);
+    let user_repo = UtilisateurRepository::new(db.get_ref());
+
+    let user = user_repo
+        .find_by_id(user_id)
+        .await
+        .map_err(|_e| CustomError::InternalError)?;
+    if user.is_none() {
+        return Err(CustomError::NotFound);
+    }
 
     let repo = AssociationRepository::new(db.get_ref());
 
     let shelter_data = repo
-        .find_by_id(shelter_id)
+        .find_by_user_id(user_id)
         .await
         .map_err(|_e| CustomError::InternalError)?;
 
@@ -327,7 +337,7 @@ pub async fn update_shelter(
                 .await
                 .map_err(|_e| CustomError::UpdateError)?;
 
-            info!("Shelter with ID {} updated", shelter_id);
+            info!("Shelter succesfully updated");
             Ok(HttpResponse::Ok().json(updated_shelter))
         }
         None => Err(CustomError::NotFound),

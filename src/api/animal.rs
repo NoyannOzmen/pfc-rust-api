@@ -1,7 +1,7 @@
 /* use actix_web::error::{ErrorInternalServerError, ErrorNotFound,  ErrorUnprocessableEntity }; */
 use actix_web::{Error, HttpMessage as _, HttpRequest, HttpResponse, web};
 use chrono::{Duration, Local};
-use log::{info, /* warn */};
+use log::{info, warn};
 use sea_orm::{DbConn};
 use validator::Validate;
 
@@ -10,10 +10,16 @@ use serde::{Deserialize, Serialize};
 use crate::auth::CustomError;
 use crate::database::models::{AnimalActiveModel, AnimalTagActiveModel, DemandeActiveModel};
 use crate::database::models::sea_orm_active_enums::{Sexe, Statut, StatutDemande};
-use crate::database::repositories::{AnimalRepository, AnimalTagRepository, AssociationRepository, DemandeRepository, FamilleRepository, UtilisateurRepository};
+use crate::database::repositories::{AnimalRepository, AnimalTagRepository, DemandeRepository, FamilleRepository, UtilisateurRepository};
 use crate::validators::common_validators::{process_json_validation};
 
 use sea_orm::ActiveValue::Set;
+
+pub fn configure_protected_creation(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("")
+            .post(create_animal)
+        );
+}
 
 pub fn configure_public(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
@@ -36,12 +42,6 @@ pub fn configure_protected_req(cfg: &mut web::ServiceConfig) {
 pub fn configure_protected_foster(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
             .post(request_animal)
-        );
-}
-
-pub fn configure_create(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("")
-            .post(create_animal)
         );
 }
 
@@ -78,11 +78,9 @@ pub struct AnimalCreate {
         message = "Please describe this animal using between 3 and 50 characters"
     ))]
     pub description_animal: String,
-    /* pub statut: Statut, */
+    pub espece_animal: String,
     pub association_id: i32,
-    /* pub famille_id: Option<i32>, */
-    pub espece_animal: i32,
-    pub tags: Vec<i32>,
+    pub tags: Vec<i32>
 }
 /* 
 #[derive(Deserialize, Serialize, Validate)]
@@ -250,38 +248,10 @@ pub async fn request_animal(
 pub async fn create_animal(
     db: web::Data<DbConn>,
     json_animal: web::Json<AnimalCreate>,
-    req: HttpRequest,
 ) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_animal)?;
 
-    let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
-
-    let user_repo = UtilisateurRepository::new(db.get_ref());
-
-    let user = user_repo
-        .find_by_id(user_id)
-        .await
-        .map_err(|_e| CustomError::InternalError)?;
-    if user.is_none() {
-        return Err(CustomError::NotFound);
-    }
-
-    let repo = AssociationRepository::new(db.get_ref());
-
-    let shelter = repo
-        .find_by_user_id(user_id)
-        .await
-        .map_err(|_e| CustomError::InternalError)?;
-    if shelter.is_none() {
-        return Err(CustomError::NotFound);
-    }
-    if !shelter.as_ref().unwrap().pensionnaires.is_empty() {
-        return Err(CustomError::ShelteredError);
-    }
-
-    let shelter_id = shelter.as_ref().unwrap().id;
-
-    info!(
+    warn!(
         "Attempting to create animal with name: {}",
         json_animal.nom_animal
     );
@@ -298,8 +268,8 @@ pub async fn create_animal(
         sexe : Set(animal.sexe_animal),
         description: Set(animal.description_animal),
         statut: Set(Statut::EnRefuge),
-        association_id: Set(shelter_id),
-        espece_id: Set(animal.espece_animal),
+        association_id: Set(animal.association_id),
+        espece_id: Set(animal.espece_animal.parse::<i32>().unwrap()), // This is for fixing Angular behaviour in FormControl
         ..Default::default()
     };
 
@@ -308,22 +278,25 @@ pub async fn create_animal(
         .await
         .map_err(|_e| CustomError::CreationError)?;
 
-    info!("Animal created with ID: {}", created_animal.id);
+    warn!("Animal created with ID: {}", created_animal.id);
 
-    for tag in animal.tags {
-        let animal_tag_model = AnimalTagActiveModel {
-            animal_id: Set(created_animal.id),
-            tag_id: Set(tag),
-        };
+    if !animal.tags.is_empty() {
+        for tag in animal.tags {
+            let animal_tag_model = AnimalTagActiveModel {
+                animal_id: Set(created_animal.id),
+                tag_id: Set(tag),
+            };
 
-        AnimalTagRepository::new(db.get_ref())
-            .create(animal_tag_model)
-            .await
-            .map_err(|_e| CustomError::CreationError)?;
+            AnimalTagRepository::new(db.get_ref())
+                .create(animal_tag_model)
+                .await
+                .map_err(|_e| CustomError::CreationError)?;
+        }
     }
 
     Ok(HttpResponse::Created().json(created_animal))
 }
+
 /* pub async fn update_animal(
     db: web::Data<DbConn>,
     path: web::Path<i32>,
