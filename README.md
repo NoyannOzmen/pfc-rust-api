@@ -1,6 +1,6 @@
 # Pet Foster Connect
 
-<img src="./static/assets/icons/logo.svg" alt="Logo de PetFosterConnect" width="300"/>
+<img src="./static/icons/logo.svg" alt="Logo de PetFosterConnect" width="300"/>
 
 ## Disclaimer
 
@@ -20,7 +20,7 @@ PFC a pour vocation de répondre à plusieurs besoins :
 
 ## Technologies utilisées
 
-Pour réaliser cette application, nous nous sommes servis de :
+Pour réaliser cette application, nous nous sommes noatemment servis de :
 
 | **Nom** | **Utilité** |
 | -------------- | ---------------- |
@@ -28,14 +28,7 @@ Pour réaliser cette application, nous nous sommes servis de :
 | Actix Web | Framework |
 | PostgreSQL | Base de données |
 | SeaORM | ORM |
-| Chrono | Dates |
 | Dotenv | Environnement |
 | env_logger & log | Historique |
-| Regex | Expressions régulières |
-| Once Cell | Initialisation de regex |
 | Bcrypt | Algorithme de hachage |
 | JsonWebToken | JWT |
-| Serde | Sérialisation |
-| Serde JSON | Création de JSON |
-| UUID | Génération d'Id |
-| Validator | Validation de champs |
