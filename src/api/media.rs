@@ -71,7 +71,7 @@ pub async fn get_medias(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
 pub struct LogoUploadForm {
     #[multipart(limit = "5MB")]
     file: TempFile,
-    assoId: Option<Text<i32>> // camelCase to sync with Angular
+    asso_id: Option<Text<i32>>
 }
 
 pub async fn upload_logo(
@@ -86,7 +86,7 @@ pub async fn upload_logo(
     
     let repo = MediaRepository::new(db.get_ref());
 
-    let shelter_id  = form.assoId.unwrap().to_string();
+    let shelter_id  = form.asso_id.unwrap().to_string();
     let id = shelter_id.parse::<i32>().unwrap();
 
     let media_model = MediaActiveModel {
@@ -109,7 +109,7 @@ pub async fn upload_logo(
 pub struct PhotoUploadForm {
     #[multipart(limit = "5MB")]
     file: TempFile,
-    animalId: Option<Text<i32>> // camelCase to sync with Angular
+    animal_id: Option<Text<i32>>
 }
 
 async fn upload_photo(
@@ -124,7 +124,7 @@ async fn upload_photo(
 
     let repo = MediaRepository::new(db.get_ref());
 
-    let animal_id  = form.animalId.unwrap().to_string();
+    let animal_id  = form.animal_id.unwrap().to_string();
     let id = animal_id.parse::<i32>().unwrap();
 
     let media_model = MediaActiveModel {

@@ -269,7 +269,7 @@ pub async fn create_animal(
         description: Set(animal.description_animal),
         statut: Set(Statut::EnRefuge),
         association_id: Set(animal.association_id),
-        espece_id: Set(animal.espece_animal.parse::<i32>().unwrap()), // This is for fixing Angular behaviour in FormControl
+        espece_id: Set(animal.espece_animal.parse::<i32>().unwrap()),
         ..Default::default()
     };
 
