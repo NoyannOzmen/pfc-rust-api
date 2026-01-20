@@ -4,8 +4,6 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, serde::Serialize  )]
 #[sea_orm(table_name = "animal_tag")]
 pub struct Model {
-    /* #[sea_orm(primary_key)]
-    pub id: i32, */
     #[sea_orm(primary_key, auto_increment = false)]
     pub animal_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]

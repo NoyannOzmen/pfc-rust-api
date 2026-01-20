@@ -1,4 +1,3 @@
-/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
@@ -21,7 +20,6 @@ pub fn configure_register(cfg: &mut web::ServiceConfig) {
 
 pub fn configure_protected(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("")
-            /* .get(get_fosters) */
             .post(update_foster)
         )
         .service(web::resource("/delete")
@@ -140,17 +138,7 @@ pub struct FosterUpdate {
     pub terrain: Option<Option<String>>,
     pub utilisateur_id: Option<i32>,
 }
-/* pub async fn get_fosters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
-    let repo = FamilleRepository::new(db.get_ref());
 
-    let fosters = repo
-        .find_all()
-        .await
-        .map_err(|e| ErrorNotFound(format!("Failed to retrieve fosters: {}", e)))?;
-
-    Ok(HttpResponse::Ok().json(fosters))
-}
-*/
 pub async fn get_foster(db: web::Data<DbConn>, path: web::Path<i32>) -> Result<HttpResponse, CustomError> {
 
     let foster_id = path.into_inner();
@@ -232,23 +220,12 @@ pub async fn create_foster(
 
 pub async fn update_foster(
     db: web::Data<DbConn>,
-    /* path: web::Path<i32>, */
     req: HttpRequest,
     json_foster: web::Json<FosterUpdate>,
 ) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_foster)?;
 
     let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
-    
-    let user_repo = UtilisateurRepository::new(db.get_ref());
-
-    let user = user_repo
-        .find_by_id(user_id)
-        .await
-        .map_err(|_e| CustomError::InternalError)?;
-    if user.is_none() {
-        return Err(CustomError::NotFound);
-    }
 
     let repo = FamilleRepository::new(db.get_ref());
 
@@ -256,6 +233,9 @@ pub async fn update_foster(
         .find_by_user_id(user_id)
         .await
         .map_err(|_e| CustomError::InternalError)?;
+    if foster_data.is_none() {
+        return Err(CustomError::NotFound);
+    }
 
     match foster_data {
         Some(foster_data) => {
@@ -281,9 +261,6 @@ pub async fn update_foster(
             if let Some(code_postal) = foster.code_postal {
                 foster_active_model.code_postal = Set(code_postal);
             }
-            /* if let Some(pays) = foster.pays {
-                foster_active_model.pays = Set(pays);
-            } */
             if let Some(hebergement) = foster.hebergement {
                 foster_active_model.hebergement = Set(hebergement);
             }
@@ -306,7 +283,6 @@ pub async fn update_foster(
 pub async fn delete_foster(
     db: web::Data<DbConn>,
     req: HttpRequest,
-    /* path: web::Path<i32>, */
 ) -> Result<HttpResponse, CustomError> {
 
     let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();

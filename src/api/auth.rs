@@ -1,4 +1,3 @@
-/* use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized}; */
 use actix_web::{HttpResponse, web};
 use sea_orm::DbConn;
 use serde::{Deserialize, Serialize};

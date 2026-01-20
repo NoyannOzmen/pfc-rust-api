@@ -1,4 +1,3 @@
-/* use actix_web::error::{ErrorInternalServerError, ErrorNotFound, ErrorUnprocessableEntity}; */
 use actix_web::{Error, HttpMessage as _, HttpRequest, HttpResponse, web};
 use log::{info, warn};
 use sea_orm::DbConn;
@@ -174,7 +173,6 @@ pub struct AssociationUpdate {
         message = "Please describe your shelter using between 3 and 200 characters"
     ))]
     pub description: Option<Option<String>>,
-    /* pub utilisateur_id: Option<i32>, */
 }
 
 pub async fn get_shelters(db: web::Data<DbConn>) -> Result<HttpResponse, Error> {
@@ -269,24 +267,12 @@ pub async fn create_shelter(
 
 pub async fn update_shelter(
     db: web::Data<DbConn>,
-    /* path: web::Path<i32>, */
     req: HttpRequest,
     json_shelter: web::Json<AssociationUpdate>,
 ) -> Result<HttpResponse, CustomError> {
     process_json_validation(&json_shelter)?;
 
-    /* let shelter_id = path.into_inner(); */
     let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();
-
-    let user_repo = UtilisateurRepository::new(db.get_ref());
-
-    let user = user_repo
-        .find_by_id(user_id)
-        .await
-        .map_err(|_e| CustomError::InternalError)?;
-    if user.is_none() {
-        return Err(CustomError::NotFound);
-    }
 
     let repo = AssociationRepository::new(db.get_ref());
 
@@ -294,6 +280,9 @@ pub async fn update_shelter(
         .find_by_user_id(user_id)
         .await
         .map_err(|_e| CustomError::InternalError)?;
+    if shelter_data.is_none() {
+        return Err(CustomError::NotFound);
+    }
 
     match shelter_data {
         Some(shelter_data) => {
@@ -347,7 +336,6 @@ pub async fn update_shelter(
 pub async fn delete_shelter(
     db: web::Data<DbConn>,
     req: HttpRequest,
-    /* path: web::Path<i32>, */
 ) -> Result<HttpResponse, CustomError> {
 
     let user_id = req.extensions_mut().get::<i32>().cloned().unwrap();

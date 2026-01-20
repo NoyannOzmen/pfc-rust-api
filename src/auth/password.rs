@@ -1,4 +1,3 @@
-/* use actix_web::{Error}; */
 use bcrypt::{hash, verify};
 
 use crate::auth::CustomError;
