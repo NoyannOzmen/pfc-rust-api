@@ -34,3 +34,4 @@ time = "0.3.47"
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
 validator = { version = "0.20.0", features = ["derive"] }
 aws-lc-sys = "0.39.0"
+openssl = "0.10.80"
